@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -115,7 +116,7 @@ class AuthServiceLoginTest {
     }
 
     @Test
-    void login_throwsException_whenOrganizationNotFound() {
+    void login_throwsBadCredentialsException_whenOrganizationNotFound() {
         // Given
         LoginRequest request = LoginRequest.builder()
                 .email("user@example.com")
@@ -127,12 +128,12 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("ORG_NOT_FOUND"));
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid credentials");
     }
 
     @Test
-    void login_throwsException_whenUserNotFoundInOrganization() {
+    void login_throwsBadCredentialsException_whenUserNotFoundInOrganization() {
         // Given
         LoginRequest request = LoginRequest.builder()
                 .email("user@example.com")
@@ -150,8 +151,8 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("User not found in organization");
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid credentials");
     }
 
     @Test

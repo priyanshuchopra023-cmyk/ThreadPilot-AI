@@ -48,6 +48,10 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}

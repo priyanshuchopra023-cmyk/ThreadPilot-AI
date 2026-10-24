@@ -51,7 +51,7 @@ public class OrganizationAuthenticationProvider implements AuthenticationProvide
         final String normalizedOrgCode = organizationCode.trim().toUpperCase();
 
         Organization organization = organizationRepository.findByCode(normalizedOrgCode)
-                .orElseThrow(() -> new BusinessException("ORG_NOT_FOUND", "Organization not found: " + normalizedOrgCode));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         User user = userRepository.findByEmailAndOrganizationId(email, organization.getId())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));

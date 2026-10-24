@@ -19,6 +19,7 @@ import com.threadpilot.user.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -141,14 +142,14 @@ public AuthResponse login(LoginRequest request) {
         String organizationCode = request.getOrganizationCode().trim().toUpperCase();
         
         Organization organization = organizationRepository.findByCode(organizationCode)
-                .orElseThrow(() -> new BusinessException("ORG_NOT_FOUND", "Organization not found: " + organizationCode));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         authenticationManager.authenticate(
                 new OrganizationUsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword(), organizationCode)
         );
 
         User user = userRepository.findByEmailAndOrganizationId(request.getEmail(), organization.getId())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found in organization: " + request.getEmail()));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException("ACCOUNT_INACTIVE", "Account is not active: " + user.getStatus());

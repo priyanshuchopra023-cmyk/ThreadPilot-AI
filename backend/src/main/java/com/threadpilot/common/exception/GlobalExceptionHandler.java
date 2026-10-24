@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -139,9 +140,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, message, null, request.getRequestURI());
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
-        log.warn("Bad credentials: {}", ex.getMessage());
+    @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(Exception ex, HttpServletRequest request) {
+        log.warn("Authentication failed: {}", ex.getMessage());
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Invalid credentials", null, request.getRequestURI());
     }
 
@@ -163,12 +164,15 @@ public class GlobalExceptionHandler {
     }
 
     private HttpStatus determineStatus(String code) {
+        if (code == null) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
         return switch (code) {
-            case "RESOURCE_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "RESOURCE_NOT_FOUND", "ORG_NOT_FOUND", "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "ACCESS_DENIED" -> HttpStatus.FORBIDDEN;
             case "CONFLICT", "INSUFFICIENT_STOCK" -> HttpStatus.CONFLICT;
-            case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
-            case "UNAUTHORIZED" -> HttpStatus.UNAUTHORIZED;
+            case "VALIDATION_ERROR", "INVALID_ORG_CODE", "BAD_REQUEST", "INVALID_INPUT" -> HttpStatus.BAD_REQUEST;
+            case "UNAUTHORIZED", "BAD_CREDENTIALS", "ACCOUNT_INACTIVE", "ACCOUNT_LOCKED", "TOKEN_EXPIRED", "INVALID_REFRESH_TOKEN" -> HttpStatus.UNAUTHORIZED;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }

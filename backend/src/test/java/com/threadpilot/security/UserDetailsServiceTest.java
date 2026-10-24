@@ -110,7 +110,7 @@ public class UserDetailsServiceTest {
     }
 
     @Test
-    void authenticate_throwsBusinessException_whenOrganizationNotFound() {
+    void authenticate_throwsBadCredentialsException_whenOrganizationNotFound() {
         // Given
         when(organizationRepository.findByCode("UNKNOWN")).thenReturn(Optional.empty());
 
@@ -119,8 +119,8 @@ public class UserDetailsServiceTest {
 
         // When/Then
         assertThatThrownBy(() -> provider.authenticate(inputToken))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Organization not found");
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("Invalid credentials");
     }
 
     @Test

@@ -1,15 +1,10 @@
 package com.threadpilot.security;
 
-import com.threadpilot.user.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,29 +21,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserRepository userRepository;
+    private final OrganizationAuthenticationProvider organizationAuthenticationProvider;
 
-    @Autowired
-    @Lazy
-    private OrganizationAuthenticationProvider organizationAuthenticationProvider;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, UserRepository userRepository) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, OrganizationAuthenticationProvider organizationAuthenticationProvider) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.userRepository = userRepository;
+        this.organizationAuthenticationProvider = organizationAuthenticationProvider;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, ObjectMapper objectMapper) throws Exception {
-        OrganizationAuthenticationFilter organizationAuthenticationFilter = new OrganizationAuthenticationFilter(authenticationManager, objectMapper);
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -91,16 +78,10 @@ public class SecurityConfig {
                             response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\",\"timestamp\":\"" + java.time.Instant.now() + "\"}");
                         })
                 )
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(organizationAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .authenticationProvider(organizationAuthenticationProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        return organizationAuthenticationProvider;
     }
 
     @Bean
@@ -109,7 +90,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
 
@@ -127,4 +108,3 @@ public class SecurityConfig {
         return source;
     }
 }
-

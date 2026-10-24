@@ -7,6 +7,7 @@ import com.threadpilot.common.exception.ResourceNotFoundException;
 import com.threadpilot.inventory.Inventory;
 import com.threadpilot.inventory.InventoryRepository;
 import com.threadpilot.organization.Organization;
+import com.threadpilot.organization.OrganizationRepository;
 import com.threadpilot.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final InventoryRepository inventoryRepository;
+    private final OrganizationRepository organizationRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<Product> getAll(PaginationRequest request) {
@@ -80,8 +82,8 @@ public class ProductService {
             throw new BusinessException("CONFLICT", "Product with barcode " + product.getBarcode() + " already exists");
         }
 
-        Organization organization = new Organization();
-        organization.setId(orgId);
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization", orgId));
         product.setOrganization(organization);
         product = productRepository.save(product);
 
@@ -174,8 +176,8 @@ public class ProductService {
             throw new BusinessException("CONFLICT", "Variant with SKU " + variant.getSku() + " already exists");
         }
 
-        Organization organization = new Organization();
-        organization.setId(orgId);
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization", orgId));
         variant.setProduct(product);
         variant.setOrganization(organization);
         variant = variantRepository.save(variant);
