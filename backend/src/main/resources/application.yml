@@ -1,0 +1,193 @@
+spring:
+  application:
+    name: threadpilot-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/threadpilot
+    username: threadpilot
+    password: threadpilot
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+        default_batch_fetch_size: 20
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    baseline-description: Initial baseline
+
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  error:
+    include-message: always
+    include-binding-errors: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.threadpilot: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+threadpilot:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:3600000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:86400000}
+    issuer: threadpilot-ai
+
+  ai:
+    provider: ${AI_PROVIDER:nvidia}
+    nvidia:
+      api-key: ${NVIDIA_API_KEY:}
+      base-url: ${NVIDIA_BASE_URL:https://integrate.api.nvidia.com/v1}
+      model: ${NVIDIA_MODEL:nvidia/nemotron-3-ultra-550b-a55b}
+      timeout: 30000
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      model: ${OPENAI_MODEL:gpt-4-turbo-preview}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      model: ${GEMINI_MODEL:gemini-pro}
+
+  ocr:
+    provider: ${OCR_PROVIDER:mock}
+    tesseract:
+      data-path: ${TESSERACT_DATA_PATH:/usr/share/tesseract-ocr/4.00/tessdata}
+
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    local:
+      path: ${STORAGE_LOCAL_PATH:./storage}
+    s3:
+      bucket: ${S3_BUCKET:}
+      region: ${S3_REGION:us-east-1}
+      access-key: ${S3_ACCESS_KEY:}
+      secret-key: ${S3_SECRET_KEY:}
+
+  business:
+    health-score-weights:
+      inventory: 0.25
+      sales: 0.20
+      collections: 0.20
+      profitability: 0.20
+      slow-moving: 0.15
+
+    low-stock:
+      default-threshold-days: 7
+      critical-threshold-days: 3
+
+    slow-moving:
+      default-days: 90
+      critical-days: 180
+
+    payment:
+      overdue-warning-days: 7
+      overdue-critical-days: 30
+
+  seed:
+    enabled: ${SEED_ENABLED:false}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/threadpilot
+
+  redis:
+    host: redis
+
+threadpilot:
+  storage:
+    local:
+      path: /app/storage
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/threadpilot_test
+    username: threadpilot
+    password: threadpilot
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  flyway:
+    enabled: false
+
+threadpilot:
+  jwt:
+    secret: test-secret-key-for-testing-purposes-only-min-256-bits
+  ai:
+    provider: mock
+  ocr:
+    provider: mock
+  seed:
+    enabled: true

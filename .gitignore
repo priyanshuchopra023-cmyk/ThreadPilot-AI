@@ -1,0 +1,72 @@
+# Build outputs
+backend/target/
+frontend/dist/
+frontend/build/
+
+# Dependencies
+frontend/node_modules/
+
+# Environment files (real credentials - never commit)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# Local test credentials and payload files
+*-test*.json
+*-deploy*.json
+login*.json
+register*.json
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.vs/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+backend/logs/
+frontend/logs/
+
+# Test and coverage
+frontend/coverage/
+backend/target/surefire-reports/
+backend/target/failsafe-reports/
+
+# Local runtime data
+backend/storage/
+*.db
+*.sqlite
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Package manager caches
+~/.m2/
+~/.npm/
+~/.cache/
+
+# Docker
+docker-compose.override.yml
+
+# Generated files (keep .env.example tracked)
+!backend/.env.example
+!frontend/.env.example
