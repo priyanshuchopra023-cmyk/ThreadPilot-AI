@@ -74,8 +74,8 @@ export const ThreadPilotLogo: React.FC<LogoProps> = ({
         width="44"
         height="44"
         rx="12"
-        fill={isDark ? '#142B4A' : '#F8FAFC'}
-        stroke={isDark ? '#243B53' : '#E2E8F0'}
+        fill="#142B4A"
+        stroke={isDark ? '#243B53' : '#1E3A5F'}
         strokeWidth="1.5"
         className="transition-colors duration-200"
       />
@@ -92,7 +92,7 @@ export const ThreadPilotLogo: React.FC<LogoProps> = ({
       {/* Central Monogram Thread Spine: Forms the distinctive 'T' cross & loop */}
       <path
         d="M20 14V34C20 36.2091 21.7909 38 24 38C26.2091 38 28 36.2091 28 34V14"
-        stroke="url(#tp-navy-gradient)"
+        stroke="#FFFFFF"
         strokeWidth="3.2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -101,7 +101,7 @@ export const ThreadPilotLogo: React.FC<LogoProps> = ({
       {/* Horizontal Top Thread Bar */}
       <path
         d="M14 14H34"
-        stroke="url(#tp-navy-gradient)"
+        stroke="#FFFFFF"
         strokeWidth="3.2"
         strokeLinecap="round"
       />
@@ -112,7 +112,7 @@ export const ThreadPilotLogo: React.FC<LogoProps> = ({
         cy="20"
         r="3.5"
         fill="url(#tp-brass-gradient)"
-        stroke={isDark ? '#142B4A' : '#FFFFFF'}
+        stroke="#142B4A"
         strokeWidth="1.5"
         filter="url(#tp-glow)"
       />
@@ -122,7 +122,7 @@ export const ThreadPilotLogo: React.FC<LogoProps> = ({
         cx="14"
         cy="28"
         r="2"
-        fill={isDark ? '#94A3B8' : '#5276A5'}
+        fill="#38BDF8"
       />
     </svg>
   );

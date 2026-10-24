@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Building2, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Building2,
+  CheckCircle2,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  Mail,
+  Lock,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ThreadPilotLogo } from '../components/brand/ThreadPilotLogo';
+import { AuthHeroIllustration } from '../components/brand/AuthHeroIllustration';
 import toast from 'react-hot-toast';
 
 export const Login: React.FC = () => {
@@ -17,20 +28,50 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  const validate = () => {
+  const validateField = (name: string, val: string): string => {
+    switch (name) {
+      case 'email':
+        if (!val.trim()) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return 'Invalid email format';
+        return '';
+      case 'password':
+        return !val ? 'Password is required' : '';
+      case 'organizationCode':
+        return !val.trim() ? 'Organization code is required' : '';
+      default:
+        return '';
+    }
+  };
+
+  const handleBlur = (field: string, val: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, val);
+    if (err) {
+      setErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const validateAll = () => {
     const newErrors: Record<string, string> = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email format';
-    if (!password) newErrors.password = 'Password is required';
-    if (!organizationCode) newErrors.organizationCode = 'Organization code is required';
+    const emailErr = validateField('email', email);
+    if (emailErr) newErrors.email = emailErr;
+    const passErr = validateField('password', password);
+    if (passErr) newErrors.password = passErr;
+    const orgErr = validateField('organizationCode', organizationCode);
+    if (orgErr) newErrors.organizationCode = orgErr;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    setHasSubmitted(true);
+    setTouched({ email: true, password: true, organizationCode: true });
+
+    if (!validateAll()) return;
 
     setLoading(true);
     try {
@@ -45,71 +86,78 @@ export const Login: React.FC = () => {
     }
   };
 
+  const getVisibleError = (field: string) => {
+    return (touched[field] || hasSubmitted) ? errors[field] : undefined;
+  };
+
   return (
     <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-12 bg-secondary-50 selection:bg-blue-100 selection:text-navy-900">
       {/* Left Column: Premium Enterprise Hero Panel */}
-      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-850 text-white relative overflow-hidden flex-col justify-between p-12 xl:p-16 border-r border-navy-800">
-        {/* Layered background radial glows & architectural thread weave geometry */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-brass-500/10 blur-3xl pointer-events-none" />
+      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-950 text-white relative overflow-hidden flex-col justify-between p-10 xl:p-14 border-r border-navy-800">
+        {/* Layered background radial glows */}
+        <div className="absolute top-0 right-0 -mr-24 -mt-24 w-96 h-96 rounded-full bg-blue-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 rounded-full bg-brass-500/15 blur-3xl pointer-events-none" />
 
-        {/* Ambient SVG Grid & Thread Monogram Art */}
+        {/* Ambient Grid Pattern */}
         <svg
           className="absolute inset-0 w-full h-full opacity-10 pointer-events-none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <pattern id="tp-hero-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+            <pattern id="tp-login-grid" width="36" height="36" patternUnits="userSpaceOnUse">
               <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#FFFFFF" strokeWidth="0.8" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#tp-hero-grid)" />
+          <rect width="100%" height="100%" fill="url(#tp-login-grid)" />
         </svg>
 
-        {/* Top Brand Indicator */}
+        {/* Brand Lockup */}
         <div className="relative z-10">
           <ThreadPilotLogo variant="full" theme="dark" size="lg" />
         </div>
 
-        {/* Hero Narrative Content */}
-        <div className="relative z-10 max-w-xl my-auto py-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-brass-300 text-xs font-semibold uppercase tracking-wider mb-6">
+        {/* Hero Narrative + 3D Dimensional Illustration */}
+        <div className="relative z-10 max-w-xl my-auto py-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800/80 border border-navy-700/80 text-brass-300 text-xs font-semibold uppercase tracking-wider mb-5 backdrop-blur-md">
             <Sparkles className="w-3.5 h-3.5 text-brass-400" />
             <span>Next-Generation Operations OS</span>
           </div>
 
-          <h2 className="text-3xl xl:text-4xl font-extrabold text-white tracking-tight leading-tight mb-4">
+          <h2 className="text-3xl xl:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
             Unified intelligence for hosiery & wholesale enterprise operations.
           </h2>
-          <p className="text-base text-slate-300 font-normal leading-relaxed mb-8">
+          <p className="text-sm xl:text-base text-slate-300 font-normal leading-relaxed mb-6">
             Manage inventory valuation, supplier OCR workflows, order fulfillment, and multi-tenant ledger accounts in one continuous, precision-crafted platform.
           </p>
 
+          {/* 3D Dimensional Illustration */}
+          <div className="mb-6">
+            <AuthHeroIllustration />
+          </div>
+
           {/* Value Proposition Pills */}
-          <div className="space-y-3.5">
-            <div className="flex items-center gap-3 text-sm text-slate-200">
-              <div className="w-6 h-6 rounded-md bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 flex-shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              </div>
-              <span>Automated OCR ingestion for supplier invoices with multi-line matching</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-200">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span>Automated OCR invoice ingestion</span>
             </div>
-            <div className="flex items-center gap-3 text-sm text-slate-200">
-              <div className="w-6 h-6 rounded-md bg-brass-500/20 border border-brass-400/30 flex items-center justify-center text-brass-300 flex-shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              </div>
-              <span>Real-time inventory valuation with proactive stockout prevention</span>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-brass-400 flex-shrink-0" />
+              <span>Proactive stockout prevention</span>
             </div>
-            <div className="flex items-center gap-3 text-sm text-slate-200">
-              <div className="w-6 h-6 rounded-md bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 flex-shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              </div>
-              <span>Strict organization-level multi-tenant isolation and audit logging</span>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span>Strict organization-level tenant isolation</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-brass-400 flex-shrink-0" />
+              <span>Real-time financial telemetry</span>
             </div>
           </div>
         </div>
 
         {/* Footer Security Assurance */}
-        <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+        <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>SOC2 Type II & Multi-Tenant Isolated Infrastructure</span>
@@ -127,11 +175,11 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-2xl border border-secondary-200/90 shadow-xl p-8 sm:p-10">
-            <div className="mb-6">
+            <div className="mb-6 pb-3 border-b border-secondary-100">
               <h1 className="text-xl sm:text-2xl font-bold text-navy-900 tracking-tight">
                 Sign in to your organization
               </h1>
-              <p className="text-xs sm:text-sm text-secondary-500 mt-1">
+              <p className="text-xs sm:text-sm text-secondary-600 mt-1">
                 Enter your credentials to access your business console
               </p>
             </div>
@@ -141,10 +189,15 @@ export const Login: React.FC = () => {
                 label="Work Email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={errors.email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                }}
+                onBlur={(e) => handleBlur('email', e.target.value)}
+                error={getVisibleError('email')}
                 placeholder="you@company.com"
                 autoComplete="email"
+                leftIcon={<Mail className="w-4 h-4 text-secondary-400" />}
                 autoFocus
               />
 
@@ -153,10 +206,15 @@ export const Login: React.FC = () => {
                   label="Password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={errors.password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                  }}
+                  onBlur={(e) => handleBlur('password', e.target.value)}
+                  error={getVisibleError('password')}
                   placeholder="••••••••"
                   autoComplete="current-password"
+                  leftIcon={<Lock className="w-4 h-4 text-secondary-400" />}
                   rightIcon={
                     <button
                       type="button"
@@ -173,8 +231,13 @@ export const Login: React.FC = () => {
               <Input
                 label="Organization Code"
                 value={organizationCode}
-                onChange={(e) => setOrganizationCode(e.target.value.toUpperCase())}
-                error={errors.organizationCode}
+                onChange={(e) => {
+                  const upper = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+                  setOrganizationCode(upper);
+                  if (errors.organizationCode) setErrors((prev) => ({ ...prev, organizationCode: '' }));
+                }}
+                onBlur={(e) => handleBlur('organizationCode', e.target.value)}
+                error={getVisibleError('organizationCode')}
                 placeholder="ORG001"
                 autoComplete="off"
                 leftIcon={<Building2 className="w-4 h-4 text-secondary-400" />}
@@ -189,7 +252,7 @@ export const Login: React.FC = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-secondary-300 text-navy-900 focus:ring-blue-500"
                   />
-                  <span className="text-xs font-medium text-secondary-600">Remember session</span>
+                  <span className="text-xs font-medium text-secondary-700">Remember session</span>
                 </label>
                 <Link
                   to="/forgot-password"
@@ -204,26 +267,31 @@ export const Login: React.FC = () => {
                   type="submit"
                   variant="primary"
                   size="lg"
-                  className="w-full justify-center shadow-md text-sm py-2.5 font-semibold"
+                  className="w-full justify-center shadow-md hover:shadow-lg text-sm py-3 font-semibold bg-navy-900 hover:bg-navy-800 text-white transition-all rounded-xl group"
                   loading={loading}
+                  rightIcon={<ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />}
                 >
-                  Sign in to Console
+                  {loading ? 'Authenticating...' : 'Sign in to Console'}
                 </Button>
               </div>
             </form>
 
             <div className="mt-6 pt-5 border-t border-secondary-100 text-center">
-              <p className="text-xs text-secondary-500">
+              <p className="text-xs text-secondary-600">
                 Need to register a new company?{' '}
-                <Link to="/register" className="font-semibold text-navy-900 hover:text-blue-600 transition-colors">
-                  Create an organization
+                <Link
+                  to="/register"
+                  className="font-semibold text-navy-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1"
+                >
+                  <span>Create an organization</span>
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               </p>
             </div>
           </div>
 
           {/* Quick Support Footnote */}
-          <div className="mt-6 text-center text-xs text-secondary-400">
+          <div className="mt-6 text-center text-xs text-secondary-500">
             Protected by ThreadPilot Enterprise Security • Multi-Tenant Isolated
           </div>
         </div>
