@@ -9,7 +9,7 @@ import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/tables/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { alertApi } from '../api/endpoints';
-import type { Alert } from '../types';
+import type { Alert, PaginatedResponse } from '../types';
 import toast from 'react-hot-toast';
 
 const statusOptions = [
@@ -42,7 +42,8 @@ export const Alerts: React.FC = () => {
     queryKey: ['alerts', page, pageSize, search, statusFilter, severityFilter],
     queryFn: async () => {
       const res = await alertApi.list({ page, size: pageSize, status: statusFilter, severity: severityFilter });
-      return (res.data as unknown) as Alert[];
+      const pageData = res.data as PaginatedResponse<Alert> | undefined;
+      return pageData?.content || [];
     },
   });
 

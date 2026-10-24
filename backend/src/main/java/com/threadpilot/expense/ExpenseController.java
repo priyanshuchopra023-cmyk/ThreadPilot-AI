@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/expenses")
+@RequestMapping("/expenses")
 @RequiredArgsConstructor
 public class ExpenseController {
 

@@ -59,7 +59,8 @@ export const Products: React.FC = () => {
     queryKey: ['products', page, pageSize, search, statusFilter],
     queryFn: async () => {
       const res = await productApi.list({ page, size: pageSize, status: statusFilter });
-      return (res.data as unknown) as Product[];
+      const pageData = res.data as PaginatedResponse<Product> | undefined;
+      return pageData?.content || [];
     },
   });
 

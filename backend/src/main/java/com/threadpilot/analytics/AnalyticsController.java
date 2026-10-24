@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/analytics")
+@RequestMapping("/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {
 

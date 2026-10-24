@@ -5,7 +5,9 @@ import com.threadpilot.auth.dto.LoginRequest;
 import com.threadpilot.common.exception.BusinessException;
 import com.threadpilot.organization.Organization;
 import com.threadpilot.organization.OrganizationRepository;
+import com.threadpilot.security.JwtProperties;
 import com.threadpilot.security.JwtService;
+import com.threadpilot.security.OrganizationUsernamePasswordAuthenticationToken;
 import com.threadpilot.security.TenantContext;
 import com.threadpilot.user.Role;
 import com.threadpilot.user.RoleRepository;
@@ -93,9 +95,11 @@ class AuthServiceLoginTest {
         when(authenticationManager.authenticate(any())).thenReturn(null);
         when(organizationRepository.findByCode("ORG001")).thenReturn(Optional.of(org));
         when(userRepository.findByEmailAndOrganizationId("user@example.com", orgId)).thenReturn(Optional.of(user));
+        JwtProperties jwtProperties = new JwtProperties();
+        jwtProperties.setExpiration(3600000L);
+        when(jwtService.getJwtProperties()).thenReturn(jwtProperties);
         when(jwtService.generateToken(user)).thenReturn("access.token");
         when(jwtService.generateRefreshToken(user)).thenReturn("refresh.token");
-        when(jwtService.getJwtProperties().getExpiration()).thenReturn(3600000L);
 
         // When
         AuthResponse response = authService.login(request);
@@ -104,6 +108,7 @@ class AuthServiceLoginTest {
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("access.token");
         assertThat(response.getRefreshToken()).isEqualTo("refresh.token");
+        verify(authenticationManager).authenticate(any(OrganizationUsernamePasswordAuthenticationToken.class));
         verify(organizationRepository).findByCode("ORG001");
         verify(userRepository).findByEmailAndOrganizationId("user@example.com", orgId);
         verify(userRepository, never()).findByEmail(anyString()); // No unscoped fallback!
@@ -123,7 +128,7 @@ class AuthServiceLoginTest {
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ORG_NOT_FOUND");
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("ORG_NOT_FOUND"));
     }
 
     @Test
@@ -178,7 +183,7 @@ class AuthServiceLoginTest {
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ACCOUNT_INACTIVE");
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("ACCOUNT_INACTIVE"));
     }
 
     @Test
@@ -211,6 +216,6 @@ class AuthServiceLoginTest {
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ACCOUNT_LOCKED");
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("ACCOUNT_LOCKED"));
     }
 }

@@ -41,6 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         try {
+            if (SecurityContextHolder.getContext().getAuthentication() != null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             final String authHeader = request.getHeader("Authorization");
             final String jwt;
             final String userEmail;

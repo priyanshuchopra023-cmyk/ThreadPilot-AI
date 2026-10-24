@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/copilot")
+@RequestMapping("/copilot")
 @RequiredArgsConstructor
 public class CopilotController {
 

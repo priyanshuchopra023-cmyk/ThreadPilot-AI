@@ -52,12 +52,20 @@ export function DataTable<T>({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection);
   const [currentPage, setCurrentPage] = useState(pagination?.currentPage || 1);
 
+  const normalizedData = useMemo<T[]>(() => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && Array.isArray((data as any).content)) {
+      return (data as any).content as T[];
+    }
+    return [];
+  }, [data]);
+
   const pageSize = pagination?.pageSize || 10;
-  const totalItems = pagination?.totalItems || data.length;
+  const totalItems = pagination?.totalItems ?? normalizedData.length;
   const totalPages = Math.ceil(totalItems / pageSize);
 
   const filteredData = useMemo(() => {
-    let result = data;
+    let result = normalizedData;
 
     if (searchTerm && searchable) {
       const lowerSearch = searchTerm.toLowerCase();

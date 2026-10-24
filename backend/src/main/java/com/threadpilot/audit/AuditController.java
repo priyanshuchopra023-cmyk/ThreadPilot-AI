@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/audit")
+@RequestMapping("/audit")
 @RequiredArgsConstructor
 public class AuditController {
 

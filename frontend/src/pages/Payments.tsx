@@ -84,7 +84,8 @@ export const Payments: React.FC = () => {
     queryKey: ['payments', page, pageSize, search, typeFilter],
     queryFn: async () => {
       const res = await paymentApi.list({ page, size: pageSize, type: typeFilter });
-      return (res.data as unknown) as Payment[];
+      const pageData = res.data as PaginatedResponse<Payment> | undefined;
+      return pageData?.content || [];
     },
   });
 

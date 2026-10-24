@@ -53,7 +53,8 @@ export const Suppliers: React.FC = () => {
     queryKey: ['suppliers', page, pageSize, search, statusFilter],
     queryFn: async () => {
       const res = await supplierApi.list({ page, size: pageSize, status: statusFilter });
-      return (res.data as unknown) as Supplier[];
+      const pageData = res.data as PaginatedResponse<Supplier> | undefined;
+      return pageData?.content || [];
     },
   });
 

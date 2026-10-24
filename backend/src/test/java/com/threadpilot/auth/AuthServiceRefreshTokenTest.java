@@ -5,6 +5,7 @@ import com.threadpilot.auth.dto.LoginRequest;
 import com.threadpilot.common.exception.BusinessException;
 import com.threadpilot.organization.Organization;
 import com.threadpilot.organization.OrganizationRepository;
+import com.threadpilot.security.JwtProperties;
 import com.threadpilot.security.JwtService;
 import com.threadpilot.security.TenantContext;
 import com.threadpilot.user.Role;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,10 +93,12 @@ class AuthServiceRefreshTokenTest {
 
         when(userRepository.findByEmailAndOrganizationId(userEmail, organizationId))
                 .thenReturn(Optional.of(user));
-        when(jwtService.isTokenValid(refreshToken, any(UserDetails.class))).thenReturn(true);
+        when(jwtService.isTokenValid(eq(refreshToken), any(UserDetails.class))).thenReturn(true);
+        JwtProperties jwtProperties = new JwtProperties();
+        jwtProperties.setExpiration(3600000L);
+        when(jwtService.getJwtProperties()).thenReturn(jwtProperties);
         when(jwtService.generateToken(user)).thenReturn("new.access.token");
         when(jwtService.generateRefreshToken(user)).thenReturn("new.refresh.token");
-        when(jwtService.getJwtProperties().getExpiration()).thenReturn(3600000L);
 
         // When
         AuthResponse response = authService.refreshToken(refreshToken);
@@ -119,7 +123,7 @@ class AuthServiceRefreshTokenTest {
         // When/Then
         assertThatThrownBy(() -> authService.refreshToken(refreshToken))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("INVALID_REFRESH_TOKEN")
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("INVALID_REFRESH_TOKEN"))
                 .hasMessageContaining("Refresh token missing organizationId claim");
 
         verify(userRepository, never()).findByEmail(anyString());
@@ -138,7 +142,7 @@ class AuthServiceRefreshTokenTest {
         // When/Then
         assertThatThrownBy(() -> authService.refreshToken(refreshToken))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("INVALID_REFRESH_TOKEN")
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("INVALID_REFRESH_TOKEN"))
                 .hasMessageContaining("Invalid organizationId in refresh token");
 
         verify(userRepository, never()).findByEmail(anyString());
@@ -190,12 +194,12 @@ class AuthServiceRefreshTokenTest {
 
         when(userRepository.findByEmailAndOrganizationId(userEmail, organizationId))
                 .thenReturn(Optional.of(user));
-        when(jwtService.isTokenValid(refreshToken, any(UserDetails.class))).thenReturn(false);
+        when(jwtService.isTokenValid(eq(refreshToken), any(UserDetails.class))).thenReturn(false);
 
         // When/Then
         assertThatThrownBy(() -> authService.refreshToken(refreshToken))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("INVALID_REFRESH_TOKEN")
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo("INVALID_REFRESH_TOKEN"))
                 .hasMessageContaining("Invalid or expired refresh token");
     }
 

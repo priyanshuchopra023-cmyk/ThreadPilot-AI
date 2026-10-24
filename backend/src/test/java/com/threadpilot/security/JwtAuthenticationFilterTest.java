@@ -91,7 +91,7 @@ class JwtAuthenticationFilterTest {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assertThat(auth).isNotNull();
-        assertThat(auth.getPrincipal()).isEqualTo(email);
+        assertThat(auth.getName()).isEqualTo(email);
     }
 
     @Test
@@ -204,15 +204,6 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void doFilterInternal_skipsAuthentication_whenAlreadyAuthenticated() throws Exception {
-        // Given
-        String email = "user@example.com";
-        String jwt = "valid.jwt.token";
-        UUID orgId = UUID.randomUUID();
-
-        when(request.getHeader("Authorization")).thenReturn("Bearer " + jwt);
-        when(jwtService.extractUsername(jwt)).thenReturn(email);
-        when(jwtService.extractOrganizationId(jwt)).thenReturn(orgId.toString());
-
         // Pre-authenticate
         Authentication existingAuth = mock(Authentication.class);
         SecurityContextHolder.getContext().setAuthentication(existingAuth);

@@ -19,7 +19,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping("/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
 

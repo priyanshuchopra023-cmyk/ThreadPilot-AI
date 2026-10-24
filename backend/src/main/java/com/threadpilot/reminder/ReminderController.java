@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/reminders")
+@RequestMapping("/reminders")
 @RequiredArgsConstructor
 public class ReminderController {
 

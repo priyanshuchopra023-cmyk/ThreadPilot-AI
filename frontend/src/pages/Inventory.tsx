@@ -28,7 +28,8 @@ export const Inventory: React.FC = () => {
     queryKey: ['inventory', page, pageSize, search, lowStockOnly],
     queryFn: async () => {
       const res = await inventoryApi.list({ page, size: pageSize, lowStock: lowStockOnly });
-      return (res.data as unknown) as InventoryType[];
+      const pageData = res.data as PaginatedResponse<InventoryType> | undefined;
+      return pageData?.content || [];
     },
   });
 

@@ -51,7 +51,8 @@ export const Orders: React.FC = () => {
     queryKey: ['orders', page, pageSize, search, statusFilter],
     queryFn: async () => {
       const res = await orderApi.list({ page, size: pageSize, status: statusFilter });
-      return (res.data as unknown) as CustomerOrder[];
+      const pageData = res.data as PaginatedResponse<CustomerOrder> | undefined;
+      return pageData?.content || [];
     },
   });
 

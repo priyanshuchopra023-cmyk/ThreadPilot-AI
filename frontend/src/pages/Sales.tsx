@@ -27,7 +27,8 @@ export const Sales: React.FC = () => {
     queryKey: ['sales', page, pageSize, search, startDate, endDate],
     queryFn: async () => {
       const res = await saleApi.list({ page, size: pageSize, startDate, endDate });
-      return (res.data as unknown) as Sale[];
+      const pageData = res.data as PaginatedResponse<Sale> | undefined;
+      return pageData?.content || [];
     },
   });
 

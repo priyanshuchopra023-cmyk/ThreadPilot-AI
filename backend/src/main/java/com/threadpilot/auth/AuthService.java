@@ -8,6 +8,7 @@ import com.threadpilot.common.exception.ConflictException;
 import com.threadpilot.organization.Organization;
 import com.threadpilot.organization.OrganizationRepository;
 import com.threadpilot.security.JwtService;
+import com.threadpilot.security.OrganizationUsernamePasswordAuthenticationToken;
 import com.threadpilot.security.TenantContext;
 import com.threadpilot.user.Role;
 import com.threadpilot.user.RoleRepository;
@@ -143,7 +144,7 @@ public AuthResponse login(LoginRequest request) {
                 .orElseThrow(() -> new BusinessException("ORG_NOT_FOUND", "Organization not found: " + organizationCode));
 
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new OrganizationUsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword(), organizationCode)
         );
 
         User user = userRepository.findByEmailAndOrganizationId(request.getEmail(), organization.getId())

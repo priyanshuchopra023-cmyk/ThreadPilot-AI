@@ -73,7 +73,8 @@ export const Expenses: React.FC = () => {
     queryKey: ['expenses', page, pageSize, search, categoryFilter, startDate, endDate],
     queryFn: async () => {
       const res = await expenseApi.list({ page, size: pageSize, category: categoryFilter, startDate, endDate });
-      return (res.data as unknown) as Expense[];
+      const pageData = res.data as PaginatedResponse<Expense> | undefined;
+      return pageData?.content || [];
     },
   });
 

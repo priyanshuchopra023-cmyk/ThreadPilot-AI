@@ -59,6 +59,11 @@ api.interceptors.response.use(
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (!refreshToken) {
+        clearAuth();
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -75,27 +80,38 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await axios.post<AuthResponse>(
+        const response = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           { refreshToken },
           { headers: { 'Content-Type': 'application/json' } }
         );
 
-        accessToken = response.data.accessToken;
-        refreshToken = response.data.refreshToken;
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
+        const raw = response.data as any;
+        const payload = (raw && typeof raw === 'object' && 'data' in raw && raw.data) ? raw.data : raw;
+        const newAccessToken = payload?.accessToken;
+        const newRefreshToken = payload?.refreshToken || refreshToken;
 
-        processQueue(null, accessToken);
+        if (!newAccessToken || typeof newAccessToken !== 'string') {
+          throw new Error('Refresh response missing access token');
+        }
+
+        accessToken = newAccessToken;
+        refreshToken = newRefreshToken;
+        localStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+
+        processQueue(null, newAccessToken);
 
         originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as Error, null);
         clearAuth();
-        window.location.href = '/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

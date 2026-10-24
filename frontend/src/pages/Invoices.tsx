@@ -104,7 +104,8 @@ export const Invoices: React.FC = () => {
     queryKey: ['invoices', page, pageSize, search, statusFilter, ocrStatusFilter],
     queryFn: async () => {
       const res = await invoiceApi.list({ page, size: pageSize, status: statusFilter, ocrStatus: ocrStatusFilter });
-      return (res.data as unknown) as SupplierInvoice[];
+      const pageData = res.data as PaginatedResponse<SupplierInvoice> | undefined;
+      return pageData?.content || [];
     },
   });
 
