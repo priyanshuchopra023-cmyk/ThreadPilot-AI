@@ -88,6 +88,12 @@ public class AlertService {
         return alertRepository.findUnreadByAssignedUser(userId);
     }
 
+    @Transactional(readOnly = true)
+    public long getUnreadCount() {
+        UUID orgId = TenantContext.requireTenantId();
+        return alertRepository.countUnread(orgId);
+    }
+
     @Transactional
     public Alert markAsRead(UUID id) {
         UUID orgId = TenantContext.requireTenantId();

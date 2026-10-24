@@ -33,7 +33,8 @@ public class PaginationRequest {
                 ? org.springframework.data.domain.Sort.Direction.DESC
                 : org.springframework.data.domain.Sort.Direction.ASC;
         org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(direction, sortBy != null ? sortBy : "createdAt");
-        return org.springframework.data.domain.PageRequest.of(page, size, sort);
+        int pageIndex = page > 0 ? page - 1 : 0;
+        return org.springframework.data.domain.PageRequest.of(pageIndex, size, sort);
     }
 }
 

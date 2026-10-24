@@ -56,11 +56,32 @@ public class SupplierInvoiceService {
 @Transactional(readOnly = true)
     public PageResponse<SupplierInvoice> getAll(PaginationRequest request) {
         UUID orgId = TenantContext.requireTenantId();
+        InvoiceStatus invoiceStatus = null;
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                invoiceStatus = InvoiceStatus.valueOf(request.getStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        OcrStatus ocrStatus = null;
+        if (request.getOcrStatus() != null && !request.getOcrStatus().isBlank()) {
+            try {
+                ocrStatus = OcrStatus.valueOf(request.getOcrStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        UUID supplierId = null;
+        if (request.getSupplierId() != null && !request.getSupplierId().isBlank()) {
+            try {
+                supplierId = UUID.fromString(request.getSupplierId().trim());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         Page<SupplierInvoice> page = invoiceRepository.findWithFilters(
                 orgId,
-                request.getStatus(),
-                request.getOcrStatus(),
-                request.getSupplierId() != null ? UUID.fromString(request.getSupplierId()) : null,
+                invoiceStatus,
+                ocrStatus,
+                supplierId,
                 request.toPageable()
         );
         return PageResponse.of(page);

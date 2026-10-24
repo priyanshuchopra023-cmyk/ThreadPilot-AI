@@ -90,7 +90,7 @@ private final SaleRepository saleRepository;
         BigDecimal monthGrossProfit = saleRepository.getTotalGrossProfitByDateRange(orgId, startOfMonth, today);
 
         BigDecimal totalReceivables = getTotalReceivables(orgId);
-        BigDecimal totalPayables = supplierRepository.getTotalOutstanding(orgId);
+        BigDecimal totalPayables = getTotalPayables(orgId);
         BigDecimal inventoryValue = inventoryRepository.getTotalInventoryValue(orgId);
 
         Long lowStockCount = inventoryRepository.countLowStock(orgId, 10);
@@ -161,12 +161,14 @@ private final SaleRepository saleRepository;
 
 @Transactional(readOnly = true)
     public BigDecimal getTotalReceivables(UUID orgId) {
-        return customerRepository.getTotalOutstanding(orgId);
+        BigDecimal total = customerRepository.getTotalOutstanding(orgId);
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     @Transactional(readOnly = true)
     public BigDecimal getTotalPayables(UUID orgId) {
-        return supplierRepository.getTotalOutstanding(orgId);
+        BigDecimal total = supplierRepository.getTotalOutstanding(orgId);
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     private BigDecimal calculateInventoryHealth(UUID orgId) {
@@ -190,6 +192,9 @@ private final SaleRepository saleRepository;
         BigDecimal currentMonthSales = saleRepository.getTotalRevenueByDateRange(orgId, startOfMonth, today);
         BigDecimal prevMonthSales = saleRepository.getTotalRevenueByDateRange(orgId, startOfPrevMonth, endOfPrevMonth);
 
+        if (currentMonthSales == null) {
+            currentMonthSales = BigDecimal.ZERO;
+        }
         if (prevMonthSales == null || prevMonthSales.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.valueOf(75); // Neutral score
         }

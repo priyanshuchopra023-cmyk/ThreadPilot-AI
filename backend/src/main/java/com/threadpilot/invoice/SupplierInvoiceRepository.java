@@ -53,8 +53,8 @@ public interface SupplierInvoiceRepository extends JpaRepository<SupplierInvoice
            "ORDER BY i.invoiceDate DESC")
     Page<SupplierInvoice> findWithFilters(
             @Param("orgId") UUID organizationId,
-            @Param("status") String status,
-            @Param("ocrStatus") String ocrStatus,
+            @Param("status") InvoiceStatus status,
+            @Param("ocrStatus") OcrStatus ocrStatus,
             @Param("supplierId") UUID supplierId,
             Pageable pageable);
 }

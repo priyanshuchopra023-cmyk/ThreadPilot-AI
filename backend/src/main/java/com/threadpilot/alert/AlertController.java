@@ -37,6 +37,12 @@ public class AlertController {
         return ResponseEntity.ok(ApiResponse.success(alerts));
     }
 
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getUnreadCount() {
+        long count = alertService.getUnreadCount();
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("count", count)));
+    }
+
     @PostMapping("/{id}/read")
     public ResponseEntity<ApiResponse<Alert>> markAsRead(@PathVariable UUID id) {
         Alert alert = alertService.markAsRead(id);
