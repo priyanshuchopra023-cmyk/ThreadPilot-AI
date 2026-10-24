@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 
@@ -7,6 +7,7 @@ export const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -27,7 +28,7 @@ export const Layout: React.FC = () => {
   const openMobileSidebar = () => setMobileSidebarOpen(true);
 
   return (
-    <div className="min-h-screen bg-secondary-50">
+    <div className="min-h-screen bg-secondary-50 selection:bg-blue-100 selection:text-navy-900">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={toggleSidebar}
@@ -46,7 +47,7 @@ export const Layout: React.FC = () => {
         `}
         role="main"
       >
-        <div className="p-4 lg:p-6">
+        <div className="p-4 sm:p-6 lg:p-7 max-w-7xl mx-auto animate-fade-in" key={location.pathname}>
           <Outlet />
         </div>
       </main>

@@ -140,6 +140,7 @@ export interface CustomerOrder {
   notes?: string;
   shippingAddress?: string;
   customerId: string;
+  customerName?: string;
   organizationId: string;
   createdById?: string;
   items: CustomerOrderItem[];
@@ -175,6 +176,7 @@ export interface Sale {
   grossProfit: number;
   notes?: string;
   customerId?: string;
+  customerName?: string;
   orderId?: string;
   organizationId: string;
   createdById?: string;

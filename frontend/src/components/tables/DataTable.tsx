@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Inbox } from 'lucide-react';
 
-interface Column<T> {
+export interface Column<T> {
   key: string;
   header: string;
   render?: (row: T) => React.ReactNode;
@@ -10,7 +10,7 @@ interface Column<T> {
   align?: 'left' | 'center' | 'right';
 }
 
-interface DataTableProps<T> {
+export interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
   keyExtractor: (row: T) => string;
@@ -50,7 +50,7 @@ export function DataTable<T>({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(defaultSortKey || null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection);
-  const [currentPage, setCurrentPage] = useState(pagination?.currentPage || 1);
+  const currentPage = pagination?.currentPage || 1;
 
   const normalizedData = useMemo<T[]>(() => {
     if (Array.isArray(data)) return data;
@@ -62,7 +62,7 @@ export function DataTable<T>({
 
   const pageSize = pagination?.pageSize || 10;
   const totalItems = pagination?.totalItems ?? normalizedData.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   const filteredData = useMemo(() => {
     let result = normalizedData;
@@ -91,13 +91,18 @@ export function DataTable<T>({
     }
 
     return result;
-  }, [data, searchTerm, searchKeys, columns, sortKey, sortDirection, sortable]);
+  }, [normalizedData, searchTerm, searchKeys, columns, sortKey, sortDirection, sortable, searchable]);
 
+  // Handle client-side vs server-side slicing correctly
   const paginatedData = useMemo(() => {
     if (!pagination?.enabled) return filteredData;
+    // If server-side pagination is active (onPageChange provided)
+    if (pagination.onPageChange) {
+      return filteredData;
+    }
     const start = (currentPage - 1) * pageSize;
     return filteredData.slice(start, start + pageSize);
-  }, [filteredData, pagination?.enabled, currentPage, pageSize]);
+  }, [filteredData, pagination?.enabled, pagination?.onPageChange, currentPage, pageSize]);
 
   const handleSort = (key: string) => {
     if (!sortable) return;
@@ -111,34 +116,35 @@ export function DataTable<T>({
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
     pagination?.onPageChange?.(page, pageSize);
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
   };
 
   if (loading) {
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr>
+            <tr className="bg-secondary-50/70 border-b border-secondary-200">
               {columns.map((col) => (
-                <th key={col.key} className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                <th
+                  key={col.key}
+                  className="px-4.5 py-3 text-[11px] font-semibold text-secondary-600 uppercase tracking-wider"
+                >
                   {col.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-secondary-100 bg-white">
             {[...Array(5)].map((_, i) => (
-              <tr key={i}>
+              <tr key={i} className="animate-pulse">
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3">
-                    <div className="h-4 bg-secondary-200 animate-pulse rounded w-3/4" />
+                  <td key={col.key} className="px-4.5 py-3.5">
+                    <div className="h-4 bg-secondary-100 rounded-md w-3/4" />
                   </td>
                 ))}
               </tr>
@@ -150,65 +156,90 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={className}>
+    <div className={`w-full ${className}`}>
       {searchable && (
         <div className="mb-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 w-5 h-5" />
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 w-4 h-4" />
             <input
               type="text"
               value={searchTerm}
               onChange={handleSearch}
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Search records..."
+              className="w-full pl-9 pr-4 py-1.5 text-xs bg-white border border-secondary-200 rounded-lg shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 placeholder:text-secondary-400"
             />
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-secondary-50">
-            <tr>
+      <div className="overflow-x-auto rounded-xl border border-secondary-200/90 bg-white shadow-xs">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-secondary-50/70 border-b border-secondary-200/90 select-none">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={`
-                    px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider
-                    ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}
-                    ${col.sortable && sortable ? 'cursor-pointer hover:bg-secondary-50 select-none' : ''}
-                    ${col.width ? `w-[${col.width}]` : ''}
+                    px-4.5 py-3 text-[11px] font-semibold text-secondary-600 uppercase tracking-wider
+                    ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
+                    ${col.sortable && sortable ? 'cursor-pointer hover:text-navy-900 transition-colors' : ''}
                   `}
                   onClick={() => col.sortable && sortable && handleSort(col.key)}
                   style={{ width: col.width }}
                 >
-                  <div className="flex items-center gap-1">
-                    {col.header}
-                    {col.sortable && sortable && sortKey === col.key && (
-                      sortDirection === 'asc' ? <ChevronUp className="w-4 h-4 text-primary-600" /> : <ChevronDown className="w-4 h-4 text-primary-600" />
+                  <div
+                    className={`inline-flex items-center gap-1.5 ${
+                      col.align === 'center'
+                        ? 'justify-center'
+                        : col.align === 'right'
+                        ? 'justify-end'
+                        : 'justify-start'
+                    }`}
+                  >
+                    <span>{col.header}</span>
+                    {col.sortable && sortable && (
+                      <span className="text-secondary-400">
+                        {sortKey === col.key ? (
+                          sortDirection === 'asc' ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-navy-900" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-navy-900" />
+                          )
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 opacity-40" />
+                        )}
+                      </span>
                     )}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-secondary-200">
+          <tbody className="divide-y divide-secondary-100/90 bg-white">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-secondary-500">
-                  {emptyMessage}
+                <td colSpan={columns.length} className="px-6 py-14 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-400 mb-2.5">
+                      <Inbox className="w-5 h-5" />
+                    </div>
+                    <p className="text-sm font-medium text-secondary-600">{emptyMessage}</p>
+                    <p className="text-xs text-secondary-400 mt-0.5">Records will appear here once created</p>
+                  </div>
                 </td>
               </tr>
             ) : (
               paginatedData.map((row) => {
                 const cells = columns.map((col) => {
-                  const cellValue = col.render ? col.render(row) : (((row as Record<string, unknown>)[col.key]?.toString()) ?? '—');
+                  const cellValue = col.render
+                    ? col.render(row)
+                    : (((row as Record<string, unknown>)[col.key]?.toString()) ?? '—');
                   return (
                     <td
                       key={col.key}
                       className={`
-                        px-4 py-3 text-sm text-secondary-900
-                        ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}
+                        px-4.5 py-3.5 text-sm text-secondary-900 tabular-nums
+                        ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
                       `}
                     >
                       {cellValue}
@@ -219,8 +250,8 @@ export function DataTable<T>({
                   <tr
                     key={keyExtractor(row)}
                     className={`
-                      ${onRowClick ? 'cursor-pointer hover:bg-secondary-50' : ''}
-                      transition-colors
+                      transition-colors duration-100
+                      ${onRowClick ? 'cursor-pointer hover:bg-blue-50/40' : 'hover:bg-secondary-50/50'}
                     `}
                     onClick={() => onRowClick?.(row)}
                   >
@@ -233,30 +264,32 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {pagination?.enabled && totalItems > pageSize && (
-        <div className="flex items-center justify-between mt-4 px-2">
-          <div className="text-sm text-secondary-500">
-            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} results
+      {pagination?.enabled && totalItems > 0 && (
+        <div className="flex items-center justify-between mt-3.5 px-2">
+          <div className="text-xs text-secondary-500 tabular-nums">
+            Showing <span className="font-medium text-secondary-700">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+            <span className="font-medium text-secondary-700">{Math.min(currentPage * pageSize, totalItems)}</span> of{' '}
+            <span className="font-medium text-secondary-700">{totalItems}</span> entries
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 border border-secondary-300 rounded-lg hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage <= 1}
+              className="p-1.5 border border-secondary-200 rounded-lg text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               aria-label="Previous page"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-sm font-medium text-secondary-700 w-20 text-center">
-              Page {currentPage} of {totalPages}
+            <span className="px-2.5 py-1 text-xs font-semibold text-navy-900 bg-secondary-100 rounded-md border border-secondary-200 tabular-nums">
+              {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 border border-secondary-300 rounded-lg hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage >= totalPages}
+              className="p-1.5 border border-secondary-200 rounded-lg text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               aria-label="Next page"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -264,3 +297,5 @@ export function DataTable<T>({
     </div>
   );
 }
+
+export default DataTable;

@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/tables/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { PageHeader } from '../components/ui/PageHeader';
 import { invoiceApi } from '../api/endpoints';
 import type { SupplierInvoice, PaginatedResponse, OcrResult, OcrLineItem, SupplierInvoiceItem } from '../types';
 import toast from 'react-hot-toast';
@@ -423,48 +424,99 @@ export const Invoices: React.FC = () => {
 
   const invoices = data || [];
   const totalItems = data?.length || 0;
+  const totalInvoiced = invoices.reduce((acc, inv) => acc + Number(inv.totalAmount || 0), 0);
+  const totalOutstanding = invoices.reduce((acc, inv) => acc + Number(inv.outstandingAmount || 0), 0);
+  const verifiedCount = invoices.filter(inv => inv.ocrStatus === 'VERIFIED' || inv.status === 'VERIFIED').length;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary-600" />
-            Supplier Invoices
-          </h1>
-          <p className="text-secondary-600 mt-1">Manage supplier invoices, documents, and OCR processing</p>
+      {/* Header */}
+      <PageHeader
+        title="Supplier Invoices"
+        description="Supplier tax invoices, intelligent OCR data capture, line-item reconciliation, and AP audit"
+        breadcrumbs={[
+          { label: 'Financials' },
+          { label: 'Invoices' },
+        ]}
+        actions={
+          <Button 
+            onClick={() => { setEditingInvoice(null); setShowModal(true); }} 
+            variant="primary"
+            leftIcon={<Plus className="w-4 h-4" />}
+            className="shadow-sm"
+          >
+            Add Invoice
+          </Button>
+        }
+      />
+
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center flex-shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Total Invoiced</p>
+            <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">
+              ₹{totalInvoiced.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
         </div>
-        <Button onClick={() => { setEditingInvoice(null); setShowModal(true); }} leftIcon={<Plus className="w-4 h-4" />}>
-          Add Invoice
-        </Button>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-danger-50 text-danger-700 flex items-center justify-center flex-shrink-0">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Outstanding Payables</p>
+            <p className="text-xl font-bold text-danger-800 font-mono tabular-nums">
+              ₹{totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-success-50 text-success-700 flex items-center justify-center flex-shrink-0">
+            <CheckCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Verified Vouchers</p>
+            <p className="text-xl font-bold text-success-800 font-mono tabular-nums">
+              {verifiedCount} Verified
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card>
         <CardBody className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 w-4 h-4" />
               <Input
                 placeholder="Search invoices by number..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="pl-10"
+                className="pl-9 bg-navy-50/40"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              options={[{ value: '', label: 'All Statuses' }, ...statusOptions]}
-              placeholder="Filter by status"
-              className="w-full sm:w-40"
-            />
-            <Select
-              value={ocrStatusFilter}
-              onChange={(e) => { setOcrStatusFilter(e.target.value); setPage(1); }}
-              options={[{ value: '', label: 'All OCR Status' }, ...ocrStatusOptions]}
-              placeholder="Filter by OCR"
-              className="w-full sm:w-40"
-            />
+            <div className="flex items-center gap-2">
+              <Select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                options={[{ value: '', label: 'All Statuses' }, ...statusOptions]}
+                placeholder="Filter by status"
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={ocrStatusFilter}
+                onChange={(e) => { setOcrStatusFilter(e.target.value); setPage(1); }}
+                options={[{ value: '', label: 'All OCR Status' }, ...ocrStatusOptions]}
+                placeholder="Filter by OCR"
+                className="w-full sm:w-40"
+              />
+            </div>
           </div>
         </CardBody>
       </Card>

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
+import { ThreadPilotLogo } from './components/brand/ThreadPilotLogo';
 
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
 const Register = lazy(() => import('./pages/Register').then((m) => ({ default: m.Register })));
@@ -19,15 +20,25 @@ const Alerts = lazy(() => import('./pages/Alerts').then((m) => ({ default: m.Ale
 const Copilot = lazy(() => import('./pages/Copilot').then((m) => ({ default: m.Copilot })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 
+const LoadingFallback = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-secondary-50 selection:bg-blue-100">
+    <div className="relative flex flex-col items-center animate-fade-in">
+      <ThreadPilotLogo variant="symbol" size="lg" className="mb-4" />
+      <div className="w-32 h-1 bg-secondary-200 rounded-full overflow-hidden">
+        <div className="h-full bg-navy-900 rounded-full animate-pulse" />
+      </div>
+      <p className="text-[11px] font-semibold text-secondary-500 uppercase tracking-widest mt-3">
+        Loading ThreadPilot AI
+      </p>
+    </div>
+  </div>
+);
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent" />
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -37,21 +48,11 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent" />
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 };
-
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent" />
-  </div>
-);
 
 const App: React.FC = () => {
   return (
@@ -94,7 +95,6 @@ const App: React.FC = () => {
           <Route path="/copilot" element={<Copilot />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>

@@ -1,13 +1,27 @@
 import React, { useState, useRef, useEffect, FormEvent } from 'react';
-import { Send, Bot, Loader2, Trash2, Plus, X, ChevronLeft, ChevronRight, Copy, Check, AlertCircle, Cpu } from 'lucide-react';
+import { 
+  Send, 
+  Bot, 
+  Loader2, 
+  Trash2, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  Copy, 
+  Cpu, 
+  Sparkles,
+  MessageSquare,
+  HelpCircle
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
+import { PageHeader } from '../components/ui/PageHeader';
 import { copilotApi } from '../api/endpoints';
-import type { AiChatRequest, AiChatResponse } from '../types';
+import type { AiChatRequest } from '../types';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -70,7 +84,7 @@ export const Copilot: React.FC = () => {
           toolsUsed: m.toolCalls ? JSON.parse(m.toolCalls).map((t: any) => t.name) : [],
         })));
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load conversation');
     }
   };
@@ -95,8 +109,8 @@ export const Copilot: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['copilot-conversations'] });
       }
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to send message');
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to send message');
     },
   });
 
@@ -183,187 +197,243 @@ export const Copilot: React.FC = () => {
   ];
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-[calc(100vh-8.5rem)] flex flex-col space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-navy-100 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => setShowSidebar(!showSidebar)} aria-label={showSidebar ? 'Hide sidebar' : 'Show sidebar'}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowSidebar(!showSidebar)} 
+            aria-label={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
+            className="text-navy-600 hover:text-navy-900 h-8 w-8 p-0"
+          >
             {showSidebar ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-secondary-900 flex items-center gap-2">
-              <Bot className="w-5 h-5 text-primary-600" />
-              AI Copilot
-            </h1>
-            <p className="text-sm text-secondary-500">Ask questions about your business data</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-navy-900 tracking-tight flex items-center gap-2">
+                <Bot className="w-5 h-5 text-brass-600" />
+                AI Copilot
+              </h1>
+              <Badge variant="brass" size="sm" dot>Enterprise AI</Badge>
+            </div>
+            <p className="text-xs text-navy-500 mt-0.5">
+              Natural language intelligence for supply chain, stock levels, and commercial ledger
+            </p>
           </div>
         </div>
-        <Button onClick={() => setShowNewChat(true)} leftIcon={<Plus className="w-4 h-4" />}>
-          New Chat
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {providerInfo && (
+            <Badge variant={providerInfo.available ? 'success' : 'secondary'} size="sm" className="hidden sm:inline-flex">
+              <Cpu className="w-3 h-3 mr-1" />
+              {providerInfo.name.toUpperCase()} ({providerInfo.model})
+            </Badge>
+          )}
+          <Button 
+            onClick={() => setShowNewChat(true)} 
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            New Session
+          </Button>
+        </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Copilot Shell */}
+      <div className="flex-1 flex overflow-hidden border border-navy-100 rounded-xl bg-white shadow-card">
+        {/* Conversations History Sidebar */}
         {showSidebar && (
-          <aside className="w-72 bg-white border-r border-secondary-200 flex flex-col hidden lg:block">
-            <div className="p-4 border-b border-secondary-200">
-              <h3 className="font-medium text-secondary-900">Conversations</h3>
+          <aside className="w-64 bg-navy-50/40 border-r border-navy-100 flex flex-col hidden lg:flex flex-shrink-0">
+            <div className="p-3.5 border-b border-navy-100 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-navy-500 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-navy-400" />
+                Saved Sessions
+              </span>
+              <span className="font-mono text-[11px] text-navy-400">{conversations.length}</span>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {conversations.length === 0 ? (
-                <div className="p-4 text-center text-secondary-500 text-sm">No conversations yet</div>
+                <div className="p-6 text-center text-navy-400 text-xs">No prior sessions recorded</div>
               ) : (
-                <ul className="divide-y divide-secondary-200">
-                  {conversations.map((conv) => (
-                    <li key={conv.id}>
-                      <button
-                        onClick={() => { setActiveConversationId(conv.id); loadConversation(conv.id); }}
-                        className={`w-full px-4 py-3 text-left transition-colors flex items-center justify-between gap-2 ${
-                          activeConversationId === conv.id
-                            ? 'bg-primary-50 text-primary-700'
-                            : 'text-secondary-700 hover:bg-secondary-50'
-                        }`}
-                      >
-                        <span className="truncate flex-1">{conv.title || 'Untitled'}</span>
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.id); }} className="opacity-0 hover:opacity-100 transition-opacity">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => { setActiveConversationId(conv.id); loadConversation(conv.id); }}
+                    className={`group w-full px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                      activeConversationId === conv.id
+                        ? 'bg-navy-900 text-white shadow-sm'
+                        : 'text-navy-700 hover:bg-navy-100/70'
+                    }`}
+                  >
+                    <span className="truncate flex-1">{conv.title || 'General Inquiries'}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.id); }}
+                      className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                        activeConversationId === conv.id ? 'hover:bg-navy-800 text-navy-300' : 'hover:bg-navy-200 text-navy-500'
+                      }`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
               )}
             </div>
           </aside>
         )}
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Message Stream & Composer */}
+        <div className="flex-1 flex flex-col min-w-0 bg-canvas/30">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <Bot className="w-16 h-16 text-secondary-200 mb-4" />
-                <h3 className="text-lg font-medium text-secondary-700 mb-2">Welcome to AI Copilot</h3>
-                <p className="text-secondary-500 mb-6 max-w-md">
-                  Ask me anything about your business - inventory, sales, customers, payments, and more.
+              <div className="flex flex-col items-center justify-center h-full text-center py-10 max-w-lg mx-auto">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-navy-900 to-navy-800 text-brass-400 flex items-center justify-center shadow-brass mb-4">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-navy-900 tracking-tight">ThreadPilot Copilot Advisor</h3>
+                <p className="text-xs text-navy-500 mt-1 mb-6 max-w-md leading-relaxed">
+                  Direct natural language access to your wholesale database. Inquire about yarns, overdue invoices, production runs, and customer receivable risk.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left">
                   {suggestedPrompts.map((prompt) => (
-                    <Button
+                    <button
                       key={prompt}
-                      variant="ghost"
-                      size="sm"
-                      className="justify-start text-left h-auto py-3"
+                      type="button"
+                      className="p-3 bg-white border border-navy-100 hover:border-navy-300 hover:shadow-card transition-all rounded-xl text-left text-xs font-medium text-navy-800 flex items-center justify-between group"
                       onClick={() => { setInput(prompt); handleSend({ preventDefault: () => {} } as FormEvent); }}
                     >
-                      {prompt}
-                    </Button>
+                      <span className="truncate pr-2">{prompt}</span>
+                      <Sparkles className="w-3.5 h-3.5 text-navy-300 group-hover:text-brass-600 flex-shrink-0 transition-colors" />
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
             {messages.map((message) => (
-              <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                <div className={`flex-1 max-w-[80%] ${message.role === 'user' ? 'order-2' : ''}`}>
-                  <div className={`rounded-2xl p-4 ${message.role === 'user' ? 'bg-primary-600 text-white rounded-tr-sm' : 'bg-secondary-100 text-secondary-900 rounded-tl-sm'}`}>
+              <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-lg bg-navy-900 text-brass-400 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                )}
+                <div className={`max-w-[85%] sm:max-w-[75%] ${message.role === 'user' ? 'order-2' : ''}`}>
+                  <div className={`rounded-xl p-4 text-xs leading-relaxed ${
+                    message.role === 'user' 
+                      ? 'bg-navy-900 text-white rounded-tr-xs shadow-sm' 
+                      : 'bg-white text-navy-900 border border-navy-100 rounded-tl-xs shadow-card'
+                  }`}>
                     <p className="whitespace-pre-wrap">{message.content}</p>
+
                     {message.toolsUsed && message.toolsUsed.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="mt-2.5 pt-2 border-t border-navy-100/60 flex flex-wrap gap-1">
                         {message.toolsUsed.map((tool) => (
-                          <span key={tool} className="text-xs px-2 py-1 bg-white/20 rounded-full">{tool}</span>
+                          <Badge key={tool} variant="secondary" size="sm" className="font-mono text-[10px]">
+                            {tool}
+                          </Badge>
                         ))}
                       </div>
                     )}
-                    <div className="mt-2 flex items-center gap-2 text-xs opacity-70">
-                      <span>{message.timestamp.toLocaleTimeString()}</span>
-                      <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => navigator.clipboard.writeText(message.content)}>
+
+                    <div className="mt-2 flex items-center justify-between text-[10px] opacity-70">
+                      <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <button 
+                        type="button"
+                        onClick={() => { navigator.clipboard.writeText(message.content); toast.success('Copied to clipboard'); }}
+                        className="hover:opacity-100 transition-opacity p-0.5"
+                      >
                         <Copy className="w-3 h-3" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === 'user' ? 'bg-primary-100 text-primary-600' : 'bg-primary-600 text-white'}`}>
-                  {message.role === 'user' ? 'U' : <Bot className="w-4 h-4" />}
-                </div>
+                {message.role === 'user' && (
+                  <div className="w-7 h-7 rounded-lg bg-brass-500 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                    U
+                  </div>
+                )}
               </div>
             ))}
+
             {loading && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-white" />
+              <div className="flex gap-3 items-center">
+                <div className="w-7 h-7 rounded-lg bg-navy-900 text-brass-400 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Bot className="w-4 h-4" />
                 </div>
-                <div className="bg-secondary-100 rounded-2xl rounded-tl-sm p-4 flex items-center gap-2">
-                  <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
-                  <span className="text-secondary-600">Thinking...</span>
+                <div className="bg-white border border-navy-100 rounded-xl rounded-tl-xs p-3 text-xs flex items-center gap-2 shadow-sm text-navy-600 font-medium">
+                  <Loader2 className="w-4 h-4 text-navy-700 animate-spin" />
+                  Synthesizing business analytics...
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 border-t border-secondary-200 bg-white">
+          {/* Composer */}
+          <div className="p-3.5 border-t border-navy-100 bg-white">
             <form onSubmit={handleSend} className="flex gap-2">
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your business..."
-                className="flex-1 px-4 py-3 border border-secondary-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none min-h-[48px] max-h-[120px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend(e);
+                  }
+                }}
+                placeholder="Ask about inventory, receivables, customer trends, or order status..."
+                className="flex-1 px-3.5 py-2.5 border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600 resize-none min-h-[44px] max-h-[100px] text-xs text-navy-900 placeholder:text-navy-400"
                 rows={1}
                 disabled={loading}
               />
-              <Button type="submit" loading={loading} disabled={!input.trim() || loading} className="h-12" aria-label="Send message">
-                <Send className="w-5 h-5" />
+              <Button 
+                type="submit" 
+                variant="primary" 
+                loading={loading} 
+                disabled={!input.trim() || loading} 
+                className="h-11 px-4 shadow-sm"
+                aria-label="Send message"
+              >
+                <Send className="w-4 h-4" />
               </Button>
             </form>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              {providerInfo ? (
-                <>
-                  <Badge variant={providerInfo.available ? 'success' : 'warning'} className="flex items-center gap-1">
-                    {providerInfo.available ? (
-                      <Cpu className="w-3 h-3" />
-                    ) : (
-                      <AlertCircle className="w-3 h-3" />
-                    )}
-                    {providerInfo.name.toUpperCase()} ({providerInfo.model})
-                    {!providerInfo.available && <span className="ml-1">(Mock Mode)</span>}
-                  </Badge>
-                </>
-              ) : (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Detecting provider...
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-secondary-500 mt-2 text-center">
-              {providerInfo?.available
-                ? 'Powered by NVIDIA Nemotron AI • Your data stays private'
-                : 'Running in DEMO mode with mock AI responses • Data is simulated'}
-            </p>
           </div>
         </div>
       </div>
 
+      {/* New Conversation Modal */}
       <Modal
         isOpen={showNewChat}
         onClose={() => { setShowNewChat(false); setNewChatTitle(''); }}
-        title="New Conversation"
+        title="Start New Copilot Session"
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-secondary-600">Start a new conversation with the AI Copilot</p>
+          <p className="text-xs text-navy-600">
+            Create an isolated session context for analyzing a specific operational or financial topic.
+          </p>
           <Input
-            label="Title (optional)"
+            label="Session Title (optional)"
             value={newChatTitle}
             onChange={(e) => setNewChatTitle(e.target.value)}
-            placeholder="e.g., Inventory Analysis"
+            placeholder="e.g. Q4 Yarn Allocation & Margin Review"
           />
-          <div className="flex justify-end gap-3 pt-4 border-t border-secondary-200">
-            <Button type="button" variant="secondary" onClick={() => { setShowNewChat(false); setNewChatTitle(''); }}>Cancel</Button>
-            <Button type="button" onClick={handleNewChat}>Create</Button>
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-navy-100">
+            <Button type="button" variant="secondary" onClick={() => { setShowNewChat(false); setNewChatTitle(''); }}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" onClick={handleNewChat}>
+              Initialize Session
+            </Button>
           </div>
         </div>
       </Modal>
     </div>
   );
 };
+
+export default Copilot;

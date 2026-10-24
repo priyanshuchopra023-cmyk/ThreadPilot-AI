@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
-import { Search, Filter, DollarSign, Plus, Edit, Trash2, Eye, ChevronDown, Calendar, Download } from 'lucide-react';
+import { 
+  Search, 
+  DollarSign, 
+  Plus, 
+  Trash2, 
+  Eye, 
+  TrendingUp, 
+  Calendar, 
+  Download, 
+  ShoppingBag,
+  Percent
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
-import { Card, CardBody, CardHeader } from '../components/ui/Card';
+import { Card, CardBody } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/tables/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { PageHeader } from '../components/ui/PageHeader';
 import { saleApi } from '../api/endpoints';
 import type { Sale, PaginatedResponse } from '../types';
 import toast from 'react-hot-toast';
@@ -32,22 +43,10 @@ export const Sales: React.FC = () => {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: Partial<Sale>) => saleApi.create(data),
-    onSuccess: () => {
-      toast.success('Sale created successfully');
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-    },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to create sale');
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => saleApi.delete(id),
     onSuccess: () => {
-      toast.success('Sale deleted');
+      toast.success('Sale record deleted');
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     },
     onError: () => toast.error('Failed to delete sale'),
@@ -60,7 +59,7 @@ export const Sales: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this sale?')) {
+    if (window.confirm('Are you sure you want to delete this sale record?')) {
       deleteMutation.mutate(id);
     }
   };
@@ -68,100 +67,227 @@ export const Sales: React.FC = () => {
   if (isLoading && !data) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="flex items-center justify-between">
-          <div className="h-8 bg-secondary-200 rounded w-48" />
-          <div className="h-10 bg-secondary-200 rounded w-32" />
-        </div>
-        <Card><CardBody className="p-6 h-64"><div className="h-4 bg-secondary-200 rounded w-1/4 mb-4"/><div className="space-y-3"><div className="h-10 bg-secondary-200 rounded"/><div className="h-10 bg-secondary-200 rounded"/></div></CardBody></Card>
+        <div className="h-10 bg-navy-100 rounded w-48" />
+        <Card><CardBody className="p-6 h-64"><div className="h-4 bg-navy-100 rounded w-1/4 mb-4"/><div className="space-y-3"><div className="h-10 bg-navy-100 rounded"/><div className="h-10 bg-navy-100 rounded"/></div></CardBody></Card>
       </div>
     );
   }
 
   const sales = data || [];
   const totalItems = data?.length || 0;
+  const totalRevenue = sales.reduce((acc, s) => acc + Number(s.totalAmount || 0), 0);
+  const totalGrossProfit = sales.reduce((acc, s) => acc + Number(s.grossProfit || 0), 0);
+  const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-            <DollarSign className="w-6 h-6 text-primary-600" />
-            Sales
-          </h1>
-          <p className="text-secondary-600 mt-1">Track all sales transactions</p>
+      {/* Header */}
+      <PageHeader
+        title="Sales"
+        subtitle="Historical sales transactions, line-item margin analysis, and customer revenue ledgers"
+        breadcrumbs={[
+          { label: 'Commerce' },
+          { label: 'Sales' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => { setEditingSale(null); setShowModal(true); }} 
+              variant="primary"
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="shadow-sm"
+            >
+              Record Sale
+            </Button>
+          </div>
+        }
+      />
+
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center flex-shrink-0">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Total Recognized Revenue</p>
+            <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">
+              ₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" leftIcon={<Download className="w-4 h-4" />}>Export</Button>
-          <Button onClick={() => { setEditingSale(null); setShowModal(true); }} leftIcon={<Plus className="w-4 h-4" />}>
-            Record Sale
-          </Button>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-success-50 text-success-700 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Gross Profit</p>
+            <p className="text-xl font-bold text-success-800 font-mono tabular-nums">
+              ₹{totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-brass-50 text-brass-700 flex items-center justify-center flex-shrink-0">
+            <Percent className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Average Profit Margin</p>
+            <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">
+              {avgMargin.toFixed(1)}%
+            </p>
+          </div>
         </div>
       </div>
 
+      {/* Filter and Search Bar */}
       <Card>
         <CardBody className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 w-4 h-4" />
               <Input
-                placeholder="Search sales..."
+                placeholder="Search sales transactions..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="pl-10"
+                className="pl-9 bg-navy-50/40"
               />
             </div>
             <div className="flex gap-2">
               <Input
-                label="From"
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                placeholder="Start date"
-                className="w-full sm:w-40"
+                className="w-full sm:w-36 text-xs font-mono"
               />
               <Input
-                label="To"
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                placeholder="End date"
-                className="w-full sm:w-40"
+                className="w-full sm:w-36 text-xs font-mono"
               />
             </div>
           </div>
         </CardBody>
       </Card>
 
-      <Card>
+      {/* Table Card */}
+      <Card className="overflow-hidden">
         <CardBody className="p-0">
           {error ? (
-            <div className="p-6 text-center text-red-600">Failed to load sales</div>
+            <div className="p-8 text-center text-danger-600 font-medium text-sm">Failed to load sales transactions</div>
           ) : (
             <DataTable<Sale>
               data={sales}
               columns={[
-                { key: 'saleNumber', header: 'Sale #', width: '130px' },
-                { key: 'saleDate', header: 'Date', width: '110px' },
-                { key: 'customerName', header: 'Customer' },
-                { key: 'subtotal', header: 'Subtotal', align: 'right', width: '120px', render: (row: Sale) => `₹${Number(row.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'taxAmount', header: 'Tax', align: 'right', width: '100px', render: (row: Sale) => `₹${Number(row.taxAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'discountAmount', header: 'Discount', align: 'right', width: '100px', render: (row: Sale) => `₹${Number(row.discountAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'totalAmount', header: 'Total', align: 'right', width: '120px', render: (row: Sale) => <span className="font-bold">₹{Number(row.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> },
-                { key: 'grossProfit', header: 'Profit', align: 'right', width: '120px', render: (row: Sale) => (
-                  <span className={Number(row.grossProfit) >= 0 ? 'font-medium text-green-600' : 'font-medium text-red-600'}>
-                    ₹{Number(row.grossProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                )},
-                { key: 'actions', header: 'Actions', width: '120px', render: (row) => (
-                  <div className="flex items-center justify-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => { setViewingSale(row); setShowModal(true); }} aria-label="View sale">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(row.id)} aria-label="Delete sale" className="text-red-600 hover:bg-red-50">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )},
+                { 
+                  key: 'saleNumber', 
+                  header: 'Sale #', 
+                  width: '130px',
+                  render: (row: Sale) => (
+                    <span className="font-mono text-xs font-semibold text-navy-900">
+                      {row.saleNumber}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'saleDate', 
+                  header: 'Date', 
+                  width: '110px',
+                  render: (row: Sale) => (
+                    <span className="text-xs text-navy-600 font-mono">
+                      {row.saleDate}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'customerName', 
+                  header: 'Customer',
+                  render: (row: Sale) => (
+                    <span className="text-xs font-medium text-navy-900">
+                      {row.customerName || 'Walk-in Customer'}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'subtotal', 
+                  header: 'Subtotal', 
+                  align: 'right', 
+                  width: '120px', 
+                  render: (row: Sale) => (
+                    <span className="font-mono text-xs text-navy-600 tabular-nums">
+                      ₹{Number(row.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'taxAmount', 
+                  header: 'GST Tax', 
+                  align: 'right', 
+                  width: '100px', 
+                  render: (row: Sale) => (
+                    <span className="font-mono text-xs text-navy-500 tabular-nums">
+                      ₹{Number(row.taxAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'totalAmount', 
+                  header: 'Total Net', 
+                  align: 'right', 
+                  width: '130px', 
+                  render: (row: Sale) => (
+                    <span className="font-mono text-xs font-bold text-navy-900 tabular-nums">
+                      ₹{Number(row.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  ) 
+                },
+                { 
+                  key: 'grossProfit', 
+                  header: 'Gross Profit', 
+                  align: 'right', 
+                  width: '120px', 
+                  render: (row: Sale) => {
+                    const profit = Number(row.grossProfit || 0);
+                    return (
+                      <span className={`font-mono text-xs font-bold tabular-nums ${
+                        profit >= 0 ? 'text-success-700' : 'text-danger-700'
+                      }`}>
+                        ₹{profit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    );
+                  }
+                },
+                { 
+                  key: 'actions', 
+                  header: '', 
+                  width: '90px', 
+                  align: 'center',
+                  render: (row: Sale) => (
+                    <div className="flex items-center justify-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setViewingSale(row); setShowModal(true); }} 
+                        aria-label="View sale"
+                        className="text-navy-600 hover:text-navy-900 p-1.5 h-7 w-7"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDelete(row.id)} 
+                        aria-label="Delete sale" 
+                        className="text-danger-600 hover:text-danger-700 hover:bg-danger-50 p-1.5 h-7 w-7"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )
+                },
               ]}
               keyExtractor={(row) => row.id}
               searchable={false}
@@ -173,101 +299,86 @@ export const Sales: React.FC = () => {
                 totalItems,
                 onPageChange: (newPage) => setPage(newPage),
               }}
-              emptyMessage="No sales found"
+              emptyMessage="No sales transactions recorded"
             />
           )}
         </CardBody>
       </Card>
 
+      {/* Detail Modal */}
       <Modal
         isOpen={showModal && (!!editingSale || !!viewingSale)}
         onClose={closeModal}
-        title={viewingSale ? `Sale Details: ${viewingSale.saleNumber}` : 'Record Sale'}
-        size="xl"
+        title={viewingSale ? `Sale Receipt: ${viewingSale.saleNumber}` : 'Record Sale'}
+        size="lg"
       >
         {viewingSale ? (
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-            <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-4 max-h-[72vh] overflow-y-auto px-1 py-1">
+            <div className="grid grid-cols-3 gap-3 p-3.5 bg-navy-50/70 border border-navy-100 rounded-xl">
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Sale Number</label>
-                <p className="font-mono text-secondary-900">{viewingSale.saleNumber}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Receipt #</p>
+                <p className="font-mono text-xs font-bold text-navy-900 mt-0.5">{viewingSale.saleNumber}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Date</label>
-                <p className="text-secondary-900">{new Date(viewingSale.saleDate).toLocaleDateString()}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Transaction Date</p>
+                <p className="font-mono text-xs text-navy-900 mt-0.5">{new Date(viewingSale.saleDate).toLocaleDateString()}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Customer</label>
-                <p className="text-secondary-900">{viewingSale.customerId || 'Walk-in'}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Order Ref</label>
-                <p className="text-secondary-900">{viewingSale.orderId || '—'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Customer</p>
+                <p className="text-xs font-semibold text-navy-900 mt-0.5 truncate">{viewingSale.customerName || viewingSale.customerId || 'Walk-in'}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
-              <Input label="Subtotal" type="number" step="0.01" value={viewingSale.subtotal} disabled className="bg-secondary-50" />
-              <Input label="Tax Amount" type="number" step="0.01" value={viewingSale.taxAmount} disabled className="bg-secondary-50" />
-              <Input label="Discount" type="number" step="0.01" value={viewingSale.discountAmount} disabled className="bg-secondary-50" />
-              <Input label="Cost Amount" type="number" step="0.01" value={viewingSale.costAmount} disabled className="bg-secondary-50" />
+            <div className="grid grid-cols-3 gap-3 p-3.5 bg-white border border-navy-100 rounded-xl">
+              <Input label="Subtotal (₹)" type="number" step="0.01" value={viewingSale.subtotal} disabled />
+              <Input label="Tax Amount (₹)" type="number" step="0.01" value={viewingSale.taxAmount} disabled />
+              <Input label="Discount (₹)" type="number" step="0.01" value={viewingSale.discountAmount} disabled />
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
-              <Input label="Total Amount" type="number" step="0.01" value={viewingSale.totalAmount} disabled className="bg-secondary-50 font-bold" />
-              <Input label="Gross Profit" type="number" step="0.01" value={viewingSale.grossProfit} disabled className={`bg-secondary-50 font-bold ${Number(viewingSale.grossProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              <Input label="Margin %" type="number" step="0.01" value={viewingSale.totalAmount > 0 ? (Number(viewingSale.grossProfit) / Number(viewingSale.totalAmount) * 100).toFixed(2) : '0'} disabled className="bg-secondary-50" />
-            </div>
-
-            {viewingSale.notes && (
+            <div className="grid grid-cols-3 gap-3 p-3.5 bg-navy-50/50 border border-navy-100 rounded-xl">
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Notes</label>
-                <p className="text-secondary-600">{viewingSale.notes}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Total Net Amount</p>
+                <p className="font-mono text-base font-bold text-navy-900 mt-0.5">
+                  ₹{Number(viewingSale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </p>
               </div>
-            )}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Gross Margin</p>
+                <p className="font-mono text-base font-bold text-success-700 mt-0.5">
+                  ₹{Number(viewingSale.grossProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-navy-500">Margin Rate</p>
+                <p className="font-mono text-base font-bold text-navy-800 mt-0.5">
+                  {viewingSale.totalAmount > 0 ? ((Number(viewingSale.grossProfit) / Number(viewingSale.totalAmount)) * 100).toFixed(1) : '0.0'}%
+                </p>
+              </div>
+            </div>
 
-            <h4 className="font-medium text-secondary-900 pt-4 border-t border-secondary-200">Sale Items</h4>
-            <DataTable
-              data={viewingSale.items}
-              columns={[
-                { key: 'id', header: 'Item', width: '80px', render: (row) => <span className="font-mono text-xs">{row.id.slice(0, 8)}...</span> },
-                { key: 'productId', header: 'Product', width: '100px', render: (row) => row.productId ? <span className="font-mono text-xs">{row.productId.slice(0, 8)}...</span> : '—' },
-                { key: 'quantity', header: 'Qty', align: 'center', width: '60px' },
-                { key: 'unitPrice', header: 'Unit Price', align: 'right', width: '100px', render: (row) => `₹${Number(row.unitPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'unitCost', header: 'Unit Cost', align: 'right', width: '100px', render: (row) => `₹${Number(row.unitCost).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'taxRate', header: 'Tax %', align: 'center', width: '70px', render: (row) => `${row.taxRate}%` },
-                { key: 'discountRate', header: 'Disc %', align: 'center', width: '70px', render: (row) => `${row.discountRate}%` },
-                { key: 'lineTotal', header: 'Line Total', align: 'right', width: '110px', render: (row) => `₹${Number(row.lineTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'costAmount', header: 'Cost', align: 'right', width: '100px', render: (row) => `₹${Number(row.costAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'grossProfit', header: 'Profit', align: 'right', width: '100px', render: (row) => (
-                  <span className={Number(row.lineTotal) - Number(row.costAmount) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    ₹{(Number(row.lineTotal) - Number(row.costAmount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                )},
-              ]}
-              keyExtractor={(row) => row.id}
-              searchable={false}
-              sortable={false}
-              pagination={{ enabled: false }}
-              emptyMessage="No items"
-            />
-            <div className="flex justify-end gap-3 pt-4 border-t border-secondary-200">
-              <Button type="button" variant="secondary" onClick={closeModal}>Close</Button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-navy-100">
+              <Button type="button" variant="secondary" onClick={closeModal}>
+                Close
+              </Button>
             </div>
           </div>
         ) : (
-          <form onSubmit={(e) => { e.preventDefault(); toast.error('Sale creation form - implement with customer/product selection'); }} className="space-y-4 max-h-[70vh] overflow-y-auto">
-            <div className="text-center py-8 text-secondary-500">
-              <DollarSign className="w-12 h-12 mx-auto mb-4 text-secondary-300" />
-              <p>Sale recording requires customer and product selection.</p>
-              <p className="text-sm mt-2">This would typically open a POS-style interface.</p>
+          <div className="p-6 text-center text-navy-600">
+            <DollarSign className="w-10 h-10 mx-auto mb-3 text-navy-300" />
+            <p className="text-sm font-semibold text-navy-900">Direct Sales Entry</p>
+            <p className="text-xs text-navy-500 mt-1 max-w-sm mx-auto">
+              Direct counter sales point-of-sale checkout with barcode scanning.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <Button variant="secondary" onClick={closeModal}>
+                Cancel
+              </Button>
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-secondary-200">
-              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-            </div>
-          </form>
+          </div>
         )}
       </Modal>
     </div>
   );
 };
+
+export default Sales;

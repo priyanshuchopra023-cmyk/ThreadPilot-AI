@@ -4,81 +4,105 @@
 
 @layer base {
   html {
-    @apply antialiased;
+    @apply antialiased scroll-smooth;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
   body {
     @apply bg-secondary-50 text-secondary-900;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
+
+  ::selection {
+    background-color: #dbeafe;
+    color: #142b4a;
+  }
+
   * {
     @apply border-secondary-200;
   }
+
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
+  }
+
+  /* Financial values & numerical metrics use tabular numbers */
+  .tabular-nums,
+  [data-tabular-nums="true"],
+  td[data-numeric="true"],
+  .kpi-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 }
 
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  /* Premium Component Styles */
+  .card-premium {
+    @apply bg-white rounded-xl border border-secondary-200/80 shadow-card transition-all duration-200 hover:shadow-card-hover hover:border-secondary-300/80;
   }
-  .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+
+  .card-elevated {
+    @apply bg-white rounded-xl border border-secondary-200 shadow-md;
   }
-  .btn-secondary {
-    @apply btn bg-secondary-100 text-secondary-700 hover:bg-secondary-200 focus:ring-secondary-500;
+
+  .badge-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full mr-1.5;
   }
-  .btn-danger {
-    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-card;
   }
-  .btn-ghost {
-    @apply btn bg-transparent hover:bg-secondary-100 text-secondary-700 focus:ring-secondary-500;
+
+  .glass-card-dark {
+    @apply bg-navy-900/90 backdrop-blur-md border border-white/10 text-white shadow-xl;
   }
-  .input {
-    @apply w-full px-3 py-2 border border-secondary-300 rounded-lg shadow-sm placeholder:text-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors;
+
+  .brass-gradient-text {
+    @apply bg-gradient-to-r from-brass-600 via-brass-500 to-brass-400 bg-clip-text text-transparent;
   }
-  .label {
-    @apply block text-sm font-medium text-secondary-700 mb-1;
+
+  .navy-gradient-bg {
+    @apply bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950;
   }
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden;
-  }
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  .badge-success {
-    @apply badge bg-success-100 text-success-800;
-  }
-  .badge-warning {
-    @apply badge bg-warning-100 text-warning-800;
-  }
-  .badge-danger {
-    @apply badge bg-danger-100 text-danger-800;
-  }
-  .badge-info {
-    @apply badge bg-primary-100 text-primary-800;
-  }
-  .badge-secondary {
-    @apply badge bg-secondary-100 text-secondary-800;
+
+  .brass-badge {
+    @apply bg-brass-50 text-brass-800 border border-brass-200/60 font-medium;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.secondary.300') transparent;
+    scrollbar-color: #CBD5E1 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: theme('colors.secondary.300');
-    border-radius: 3px;
+    background-color: #CBD5E1;
+    border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: theme('colors.secondary.400');
+    background-color: #94A3B8;
+  }
+
+  /* Accessibility: Reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

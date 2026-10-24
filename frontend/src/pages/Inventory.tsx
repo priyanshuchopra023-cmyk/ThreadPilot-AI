@@ -1,13 +1,24 @@
-import React, { useState, FormEvent } from 'react';
-import { Search, Filter, Package2, AlertTriangle, ChevronDown, Plus, Minus } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Search, 
+  Package2, 
+  AlertTriangle, 
+  Plus, 
+  Minus, 
+  Layers, 
+  Boxes, 
+  DollarSign, 
+  ArrowUpDown 
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Card, CardBody, CardHeader } from '../components/ui/Card';
+import { Card, CardBody } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/tables/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { PageHeader } from '../components/ui/PageHeader';
 import { inventoryApi } from '../api/endpoints';
 import type { Inventory as InventoryType, PaginatedResponse } from '../types';
 import toast from 'react-hot-toast';
@@ -34,15 +45,15 @@ export const Inventory: React.FC = () => {
   });
 
   const adjustMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { quantity: number; type: string; notes?: string } }) =>
-      inventoryApi.adjustStock(id, data),
+    mutationFn: ({ id, data: adjustData }: { id: string; data: { quantity: number; type: string; notes?: string } }) =>
+      inventoryApi.adjustStock(id, adjustData),
     onSuccess: () => {
       toast.success('Stock adjusted successfully');
       closeAdjustModal();
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to adjust stock');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to adjust stock');
     },
   });
 
@@ -64,95 +75,244 @@ export const Inventory: React.FC = () => {
   const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustingItem || adjustQty <= 0) return;
-    adjustMutation.mutate({ id: adjustingItem.id, data: { quantity: adjustQty, type: adjustType, notes: adjustNotes } });
+    adjustMutation.mutate({ 
+      id: adjustingItem.id, 
+      data: { quantity: adjustQty, type: adjustType, notes: adjustNotes } 
+    });
   };
 
   if (isLoading && !data) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="flex items-center justify-between">
-          <div className="h-8 bg-secondary-200 rounded w-48" />
-          <div className="h-10 bg-secondary-200 rounded w-32" />
-        </div>
-        <Card><CardBody className="p-6 h-64"><div className="h-4 bg-secondary-200 rounded w-1/4 mb-4"/><div className="space-y-3"><div className="h-10 bg-secondary-200 rounded"/><div className="h-10 bg-secondary-200 rounded"/></div></CardBody></Card>
+        <div className="h-10 bg-navy-100 rounded w-48" />
+        <Card><CardBody className="p-6 h-64"><div className="h-4 bg-navy-100 rounded w-1/4 mb-4"/><div className="space-y-3"><div className="h-10 bg-navy-100 rounded"/><div className="h-10 bg-navy-100 rounded"/></div></CardBody></Card>
       </div>
     );
   }
 
   const inventory = data || [];
   const totalItems = data?.length || 0;
+  const totalValuation = inventory.reduce((sum, item) => sum + Number(item.totalValue || 0), 0);
+  const totalUnits = inventory.reduce((sum, item) => sum + Number(item.currentQuantity || 0), 0);
+  const lowStockCount = inventory.filter(item => Number(item.availableQuantity || 0) <= 10).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900 flex items-center gap-2">
-            <Package2 className="w-6 h-6 text-primary-600" />
-            Inventory
-          </h1>
-          <p className="text-secondary-600 mt-1">Track stock levels and movements</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => { setLowStockOnly(!lowStockOnly); setPage(1); }} leftIcon={<AlertTriangle className="w-4 h-4" />}>
-            {lowStockOnly ? 'Show All' : 'Low Stock Only'}
+      {/* Header */}
+      <PageHeader
+        title="Inventory"
+        subtitle="Real-time stock valuation, warehouse balances, and reserve movements"
+        breadcrumbs={[
+          { label: 'Operations' },
+          { label: 'Inventory' },
+        ]}
+        actions={
+          <Button 
+            variant={lowStockOnly ? 'brass' : 'secondary'}
+            size="sm"
+            onClick={() => { setLowStockOnly(!lowStockOnly); setPage(1); }} 
+            leftIcon={<AlertTriangle className="w-3.5 h-3.5" />}
+          >
+            {lowStockOnly ? 'Showing Low Stock' : 'Filter Low Stock'}
           </Button>
+        }
+      />
+
+      {/* Valuation & Stock KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center flex-shrink-0">
+            <Boxes className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Total Units In Stock</p>
+            <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">{totalUnits.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-brass-50 text-brass-700 flex items-center justify-center flex-shrink-0">
+            <DollarSign className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Stock Valuation at Cost</p>
+            <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">
+              ₹{totalValuation.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-navy-100 rounded-xl shadow-card flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg bg-warning-50 text-warning-700 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Low Stock SKUs</p>
+            <p className="text-xl font-bold text-warning-700 font-mono tabular-nums">{lowStockCount}</p>
+          </div>
         </div>
       </div>
 
+      {/* Filter and Search Bar */}
       <Card>
         <CardBody className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 w-4 h-4" />
               <Input
-                placeholder="Search inventory..."
+                placeholder="Search inventory records..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="pl-10"
+                className="pl-9 bg-navy-50/40"
               />
             </div>
-            <Select
-              value={pageSize.toString()}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              options={[{ value: '10', label: '10 per page' }, { value: '25', label: '25 per page' }, { value: '50', label: '50 per page' }]}
-              placeholder="Page size"
-              className="w-full sm:w-40"
-            />
+            <div className="flex items-center gap-2">
+              <Select
+                value={pageSize.toString()}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                options={[
+                  { value: '10', label: '10 per page' }, 
+                  { value: '25', label: '25 per page' }, 
+                  { value: '50', label: '50 per page' }
+                ]}
+                placeholder="Page size"
+                className="w-full sm:w-36"
+              />
+            </div>
           </div>
         </CardBody>
       </Card>
 
-      <Card>
+      {/* Table Card */}
+      <Card className="overflow-hidden">
         <CardBody className="p-0">
           {error ? (
-            <div className="p-6 text-center text-red-600">Failed to load inventory</div>
+            <div className="p-8 text-center text-danger-600 font-medium text-sm">Failed to load inventory</div>
           ) : (
             <DataTable
               data={inventory}
               columns={[
-                { key: 'id', header: 'ID', width: '100px', render: (row) => <span className="font-mono text-xs">{row.id.slice(0, 8)}...</span> },
-                { key: 'productId', header: 'Product ID', width: '120px', render: (row) => row.productId ? <span className="font-mono text-xs">{row.productId.slice(0, 8)}...</span> : '—' },
-                { key: 'variantId', header: 'Variant ID', width: '120px', render: (row) => row.variantId ? <span className="font-mono text-xs">{row.variantId.slice(0, 8)}...</span> : '—' },
-                { key: 'currentQuantity', header: 'Current', align: 'center', width: '80px' },
-                { key: 'reservedQuantity', header: 'Reserved', align: 'center', width: '80px' },
-                { key: 'availableQuantity', header: 'Available', align: 'center', width: '100px', render: (row) => (
-                  <span className={row.availableQuantity <= 0 ? 'font-medium text-red-600' : row.availableQuantity <= 10 ? 'font-medium text-yellow-600' : 'font-medium text-green-600'}>
-                    {row.availableQuantity}
-                  </span>
-                )},
-                { key: 'incomingQuantity', header: 'Incoming', align: 'center', width: '80px' },
-                { key: 'averageCost', header: 'Avg Cost', align: 'right', width: '100px', render: (row) => `₹${Number(row.averageCost).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'totalValue', header: 'Total Value', align: 'right', width: '120px', render: (row) => `₹${Number(row.totalValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
-                { key: 'actions', header: 'Actions', width: '140px', render: (row) => (
-                  <div className="flex items-center justify-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openAdjustModal(row, 'IN')} leftIcon={<Plus className="w-3 h-3" />} className="text-green-600 hover:bg-green-50" aria-label="Add stock">
-                      In
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openAdjustModal(row, 'OUT')} leftIcon={<Minus className="w-3 h-3" />} className="text-red-600 hover:bg-red-50" aria-label="Remove stock">
-                      Out
-                    </Button>
-                  </div>
-                )},
+                { 
+                  key: 'id', 
+                  header: 'Batch / Lot ID', 
+                  width: '120px', 
+                  render: (row) => (
+                    <span className="font-mono text-xs font-semibold text-navy-800">
+                      {row.id ? `${row.id.slice(0, 8)}...` : '—'}
+                    </span>
+                  ) 
+                },
+                { 
+                  key: 'productId', 
+                  header: 'Product Ref', 
+                  width: '130px', 
+                  render: (row) => (
+                    <span className="font-mono text-xs text-navy-600">
+                      {row.productId ? `${row.productId.slice(0, 8)}...` : '—'}
+                    </span>
+                  ) 
+                },
+                { 
+                  key: 'currentQuantity', 
+                  header: 'Current', 
+                  align: 'center', 
+                  width: '90px',
+                  render: (row) => (
+                    <span className="font-mono text-xs font-semibold text-navy-900 tabular-nums">
+                      {row.currentQuantity}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'reservedQuantity', 
+                  header: 'Reserved', 
+                  align: 'center', 
+                  width: '90px',
+                  render: (row) => (
+                    <span className="font-mono text-xs text-navy-500 tabular-nums">
+                      {row.reservedQuantity}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'availableQuantity', 
+                  header: 'Available', 
+                  align: 'center', 
+                  width: '100px', 
+                  render: (row) => {
+                    const qty = Number(row.availableQuantity || 0);
+                    return (
+                      <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded tabular-nums ${
+                        qty <= 0 ? 'bg-danger-50 text-danger-700' : qty <= 10 ? 'bg-warning-50 text-warning-800' : 'bg-success-50 text-success-800'
+                      }`}>
+                        {qty}
+                      </span>
+                    );
+                  }
+                },
+                { 
+                  key: 'incomingQuantity', 
+                  header: 'Incoming', 
+                  align: 'center', 
+                  width: '90px',
+                  render: (row) => (
+                    <span className="font-mono text-xs text-blue-600 tabular-nums">
+                      {row.incomingQuantity || 0}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'averageCost', 
+                  header: 'Avg Cost', 
+                  align: 'right', 
+                  width: '110px', 
+                  render: (row) => (
+                    <span className="font-mono text-xs text-navy-700 tabular-nums">
+                      ₹{Number(row.averageCost || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'totalValue', 
+                  header: 'Total Value', 
+                  align: 'right', 
+                  width: '130px', 
+                  render: (row) => (
+                    <span className="font-mono text-xs font-bold text-navy-900 tabular-nums">
+                      ₹{Number(row.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'actions', 
+                  header: 'Quick Adjustment', 
+                  width: '140px', 
+                  align: 'center',
+                  render: (row) => (
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => openAdjustModal(row, 'IN')} 
+                        leftIcon={<Plus className="w-3 h-3" />} 
+                        className="text-success-700 hover:bg-success-50 text-xs px-2 py-1 h-7 font-semibold" 
+                        aria-label="Add stock"
+                      >
+                        In
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => openAdjustModal(row, 'OUT')} 
+                        leftIcon={<Minus className="w-3 h-3" />} 
+                        className="text-danger-600 hover:bg-danger-50 text-xs px-2 py-1 h-7 font-semibold" 
+                        aria-label="Remove stock"
+                      >
+                        Out
+                      </Button>
+                    </div>
+                  )
+                },
               ]}
               keyExtractor={(row) => row.id}
               searchable={false}
@@ -170,6 +330,7 @@ export const Inventory: React.FC = () => {
         </CardBody>
       </Card>
 
+      {/* Adjust Stock Modal */}
       <Modal
         isOpen={showAdjustModal}
         onClose={closeAdjustModal}
@@ -178,39 +339,55 @@ export const Inventory: React.FC = () => {
       >
         <form onSubmit={handleAdjustSubmit} className="space-y-4">
           {adjustingItem && (
-            <div className="bg-secondary-50 p-4 rounded-lg">
-              <p className="text-sm font-medium text-secondary-900">Product ID: {adjustingItem.productId?.slice(0, 8) || adjustingItem.variantId?.slice(0, 8) || 'N/A'}</p>
-              <p className="text-sm text-secondary-600">Current Available: <span className="font-medium">{adjustingItem.availableQuantity}</span></p>
+            <div className="bg-navy-50/70 border border-navy-100 p-3.5 rounded-xl">
+              <p className="text-xs font-semibold text-navy-900">
+                Item: {adjustingItem.productId?.slice(0, 8) || adjustingItem.variantId?.slice(0, 8) || 'N/A'}
+              </p>
+              <p className="text-xs text-navy-500 mt-1">
+                Current Available Stock: <span className="font-bold text-navy-900 font-mono">{adjustingItem.availableQuantity}</span>
+              </p>
             </div>
           )}
+
           <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Adjustment Type</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-navy-500 mb-1.5">
+              Adjustment Type
+            </label>
             <Select
               value={adjustType}
               onChange={(e) => setAdjustType(e.target.value as 'IN' | 'OUT')}
               options={[
-                { value: 'IN', label: 'Stock In (Purchase/Return)' },
-                { value: 'OUT', label: 'Stock Out (Sale/Damage/Adjustment)' },
+                { value: 'IN', label: 'Stock In (Purchase Receipt / Return)' },
+                { value: 'OUT', label: 'Stock Out (Sale Dispatch / Damage / Sample)' },
               ]}
             />
           </div>
+
           <Input
-            label="Quantity *"
+            label="Adjustment Quantity *"
             type="number"
             min="1"
             value={adjustQty}
             onChange={(e) => setAdjustQty(Number(e.target.value) || 0)}
             placeholder="Enter quantity"
           />
+
           <Input
-            label="Notes"
+            label="Adjustment Reason / Note"
             value={adjustNotes}
             onChange={(e) => setAdjustNotes(e.target.value)}
-            placeholder="Reason for adjustment"
+            placeholder="Reason for adjustment, lot ref, etc."
           />
-          <div className="flex justify-end gap-3 pt-4 border-t border-secondary-200">
-            <Button type="button" variant="secondary" onClick={closeAdjustModal}>Cancel</Button>
-            <Button type="submit" loading={adjustMutation.isPending}>
+
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-navy-100">
+            <Button type="button" variant="secondary" onClick={closeAdjustModal}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              variant="primary"
+              loading={adjustMutation.isPending}
+            >
               {adjustType === 'IN' ? 'Add Stock' : 'Remove Stock'}
             </Button>
           </div>
@@ -219,3 +396,5 @@ export const Inventory: React.FC = () => {
     </div>
   );
 };
+
+export default Inventory;

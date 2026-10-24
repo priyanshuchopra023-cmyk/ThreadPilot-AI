@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
@@ -10,12 +10,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, leftIcon, rightIcon, className = '', id, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
+    const inputId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]/g, '-') : undefined);
 
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-secondary-700 mb-1">
+          <label htmlFor={inputId} className="block text-xs font-semibold uppercase tracking-wider text-secondary-700 mb-1.5">
             {label}
           </label>
         )}
@@ -29,12 +29,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={`
-              w-full px-3 py-2 border rounded-lg shadow-sm placeholder:text-secondary-400
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-              transition-colors duration-150
+              w-full px-3.5 py-2 text-sm bg-white border rounded-lg shadow-xs placeholder:text-secondary-400
+              focus:outline-none focus:ring-2 transition-all duration-150
               ${leftIcon ? 'pl-10' : ''}
               ${rightIcon ? 'pr-10' : ''}
-              ${error ? 'border-danger-300 focus:ring-danger-500 focus:border-danger-500' : 'border-secondary-300'}
+              ${
+                error
+                  ? 'border-danger-300 text-danger-900 focus:ring-danger-100 focus:border-danger-500'
+                  : 'border-secondary-200/90 hover:border-secondary-300 text-secondary-900 focus:ring-blue-100 focus:border-blue-500'
+              }
               ${className}
             `}
             aria-invalid={error ? 'true' : 'false'}
@@ -42,18 +45,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-secondary-400">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-secondary-400">
               {rightIcon}
             </div>
           )}
         </div>
         {error && (
-          <p id={`${inputId}-error`} className="mt-1 text-sm text-danger-600" role="alert">
+          <p id={`${inputId}-error`} className="mt-1 text-xs text-danger-600 font-medium" role="alert">
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p id={`${inputId}-helper`} className="mt-1 text-sm text-secondary-500">
+          <p id={`${inputId}-helper`} className="mt-1 text-xs text-secondary-500">
             {helperText}
           </p>
         )}
@@ -63,3 +66,5 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = 'Input';
+
+export default Input;
