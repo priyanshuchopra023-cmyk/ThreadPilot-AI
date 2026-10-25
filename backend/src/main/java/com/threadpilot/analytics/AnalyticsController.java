@@ -105,7 +105,7 @@ public class AnalyticsController {
     ) {
         LocalDate end = LocalDate.now();
         LocalDate start = switch (period) {
-            case "week" -> end.minusWeeks(1);
+            case "week" -> end.minusDays(6);
             case "quarter" -> end.minusMonths(3);
             case "year" -> end.minusYears(1);
             default -> end.minusMonths(1); // month
@@ -133,7 +133,7 @@ public class AnalyticsController {
             // Weekly points for a month (4 weeks)
             for (int i = 0; i < 4; i++) {
                 LocalDate weekStart = start.plusWeeks(i);
-                LocalDate weekEnd = weekStart.plusDays(6);
+                LocalDate weekEnd = (i == 3) ? end : weekStart.plusDays(6);
                 if (weekEnd.isAfter(end)) weekEnd = end;
                 BigDecimal revenue = saleRepository.getTotalRevenueByDateRange(orgId, weekStart, weekEnd);
                 points.add(RevenueTrendPoint.builder()

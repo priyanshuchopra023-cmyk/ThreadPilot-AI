@@ -29,7 +29,7 @@ public abstract class BaseEntity {
 
     @Version
     @Column(name = "version")
-    private Long version;
+    private Long version = 0L;
 
     public UUID getId() {
         return id;

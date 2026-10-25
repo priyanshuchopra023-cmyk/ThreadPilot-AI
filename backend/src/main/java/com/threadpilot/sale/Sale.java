@@ -98,6 +98,27 @@ public class Sale extends BaseEntity {
     private Set<SaleItem> items = new HashSet<>();
 
     public void calculateTotals() {
+        if (items == null || items.isEmpty()) {
+            if (this.totalAmount == null) {
+                this.totalAmount = BigDecimal.ZERO;
+            }
+            if (this.subtotal == null) {
+                this.subtotal = this.totalAmount;
+            }
+            if (this.taxAmount == null) {
+                this.taxAmount = BigDecimal.ZERO;
+            }
+            if (this.discountAmount == null) {
+                this.discountAmount = BigDecimal.ZERO;
+            }
+            if (this.costAmount == null) {
+                this.costAmount = BigDecimal.ZERO;
+            }
+            if (this.grossProfit == null) {
+                this.grossProfit = this.totalAmount.subtract(this.costAmount);
+            }
+            return;
+        }
         this.subtotal = items.stream()
                 .map(SaleItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

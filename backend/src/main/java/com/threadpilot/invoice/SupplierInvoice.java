@@ -7,6 +7,8 @@ import com.threadpilot.user.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -96,6 +98,7 @@ public class SupplierInvoice extends BaseEntity {
     @Column(name = "ocr_confidence")
     private Double ocrConfidence;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ocr_raw_data", columnDefinition = "JSONB")
     private String ocrRawData;
 

@@ -81,6 +81,15 @@ public class CustomerService {
         organization.setId(orgId);
         customer.setOrganization(organization);
         customer.setOutstandingAmount(BigDecimal.ZERO);
+        if (customer.getCreditLimit() == null) {
+            customer.setCreditLimit(BigDecimal.ZERO);
+        }
+        if (customer.getCustomerType() == null) {
+            customer.setCustomerType(CustomerType.RETAILER);
+        }
+        if (customer.getStatus() == null) {
+            customer.setStatus(CustomerStatus.ACTIVE);
+        }
         customer = customerRepository.save(customer);
 
         log.info("Created customer: {}", customer.getName());

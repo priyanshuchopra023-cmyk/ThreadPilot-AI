@@ -152,14 +152,14 @@ public class SaleService {
         final UUID customerId = sale.getCustomer() != null ? sale.getCustomer().getId() : null;
         final UUID orderId = sale.getOrder() != null ? sale.getOrder().getId() : null;
 
-        if (sale.getCustomer() != null) {
+        if (sale.getCustomer() != null && customerId != null) {
             Customer customer = customerRepository.findById(customerId)
                     .filter(c -> c.getOrganization().getId().equals(orgId))
                     .orElseThrow(() -> new ResourceNotFoundException("Customer", customerId));
             sale.setCustomer(customer);
         }
 
-        if (sale.getOrder() != null) {
+        if (sale.getOrder() != null && orderId != null) {
             CustomerOrder order = orderRepository.findById(orderId)
                     .filter(o -> o.getOrganization().getId().equals(orgId))
                     .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder", orderId));

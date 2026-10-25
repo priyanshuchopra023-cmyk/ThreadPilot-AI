@@ -6,6 +6,8 @@ import com.threadpilot.user.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -49,6 +51,7 @@ public class AIRecommendation extends BaseEntity {
     @Column(name = "explanation", columnDefinition = "TEXT", nullable = false)
     private String explanation;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "supporting_data", columnDefinition = "JSONB")
     private String supportingData;
 

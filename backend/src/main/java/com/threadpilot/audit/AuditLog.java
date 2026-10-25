@@ -6,6 +6,8 @@ import com.threadpilot.user.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -42,12 +44,15 @@ public class AuditLog extends BaseEntity {
     @Column(name = "entity_reference")
     private String entityReference;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "previous_values", columnDefinition = "JSONB")
     private String previousValues;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "new_values", columnDefinition = "JSONB")
     private String newValues;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "changed_fields", columnDefinition = "JSONB")
     private String changedFields;
 

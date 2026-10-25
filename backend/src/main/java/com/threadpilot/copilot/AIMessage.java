@@ -5,6 +5,8 @@ import com.threadpilot.organization.Organization;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 
@@ -29,9 +31,11 @@ public class AIMessage extends BaseEntity {
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tool_calls", columnDefinition = "JSONB")
     private String toolCalls;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tool_results", columnDefinition = "JSONB")
     private String toolResults;
 
@@ -53,6 +57,7 @@ public class AIMessage extends BaseEntity {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "JSONB")
     private String metadata;
 
