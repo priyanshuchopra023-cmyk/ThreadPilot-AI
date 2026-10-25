@@ -180,6 +180,8 @@ export const copilotApi = {
   getProviderInfo: () => api.get<{ name: string; available: boolean; model: string }>('/copilot/provider'),
 };
 
+export const threadAiApi = copilotApi;
+
 export const dashboardApi = {
   getStats: () => api.get<DashboardStats>('/dashboard/stats'),
   getRecentSales: () => api.get<RecentSale[]>('/dashboard/recent-sales'),

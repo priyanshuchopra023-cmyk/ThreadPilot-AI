@@ -32,15 +32,18 @@ public class AIConversation extends BaseEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private ConversationStatus status = ConversationStatus.ACTIVE;
 
     @Column(name = "context_summary", columnDefinition = "TEXT")
     private String contextSummary;
 
     @Column(name = "total_tokens_used")
+    @Builder.Default
     private Integer totalTokensUsed = 0;
 
     @Column(name = "total_cost", precision = 10, scale = 6)
+    @Builder.Default
     private java.math.BigDecimal totalCost = java.math.BigDecimal.ZERO;
 
     @ManyToOne(fetch = FetchType.LAZY)

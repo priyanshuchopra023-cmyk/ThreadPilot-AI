@@ -59,7 +59,7 @@ const navSections: Array<{ label?: string; items: NavItem[] }> = [
     label: 'Operations & AI',
     items: [
       { name: 'Alerts', href: '/alerts', icon: BellRing },
-      { name: 'AI Copilot', href: '/copilot', icon: Sparkles, badge: 'AI' },
+      { name: 'Thread AI', href: '/thread-ai', icon: Sparkles, badge: 'AI' },
       { name: 'Settings', href: '/settings', icon: Settings },
     ],
   },
@@ -154,7 +154,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
                 <ul className="space-y-0.5" role="list">
                   {section.items.map((item) => {
+                    const isAiMatch = (item.href === '/thread-ai' || item.href === '/copilot') &&
+                      (location.pathname === '/thread-ai' || location.pathname === '/copilot');
                     const isActive =
+                      isAiMatch ||
                       location.pathname === item.href ||
                       (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
                     const Icon = item.icon;

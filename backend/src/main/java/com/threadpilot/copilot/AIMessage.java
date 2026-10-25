@@ -40,9 +40,11 @@ public class AIMessage extends BaseEntity {
     private String toolResults;
 
     @Column(name = "tokens_used")
+    @Builder.Default
     private Integer tokensUsed = 0;
 
     @Column(name = "cost", precision = 10, scale = 6)
+    @Builder.Default
     private java.math.BigDecimal cost = java.math.BigDecimal.ZERO;
 
     @Column(name = "model_used")

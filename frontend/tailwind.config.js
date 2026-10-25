@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand Primary: Navy #142B4A
+        // Brand Primary: Navy #142B4A & Deep Midnight
         navy: {
           50: '#F0F4F8',
           100: '#D9E2EC',
@@ -19,7 +19,33 @@ export default {
           700: '#243B53',
           800: '#182E4B',
           900: '#142B4A', // Signature Primary Navy
-          950: '#0A1728',
+          950: '#0B1524', // Deep Midnight Navy
+        },
+        // Understated Luxury: Warm Ivory & Pearl
+        ivory: {
+          50: '#FDFBF7',
+          100: '#FAF6EE',
+          200: '#F4ECE0',
+          300: '#EAE0CF',
+          400: '#D8CCA8',
+          500: '#C7B892',
+          600: '#AFA07A',
+          700: '#8C7F5D',
+          800: '#6A6045',
+          900: '#4A4330',
+        },
+        // Architectural Stone Neutrals
+        stone: {
+          50: '#FAF9F6',
+          100: '#F3F2EE',
+          200: '#E7E5DE',
+          300: '#D5D2C7',
+          400: '#A8A497',
+          500: '#7E7A6E',
+          600: '#5C584E',
+          700: '#444138',
+          800: '#2F2D26',
+          900: '#1D1C17',
         },
         // Brand Interactive: Muted Steel Blue #5276A5
         blue: {
@@ -140,9 +166,12 @@ export default {
         'md': '0 4px 6px -1px rgb(15 29 50 / 0.07), 0 2px 4px -2px rgb(15 29 50 / 0.07)',
         'lg': '0 10px 15px -3px rgb(15 29 50 / 0.08), 0 4px 6px -4px rgb(15 29 50 / 0.08)',
         'xl': '0 20px 25px -5px rgb(15 29 50 / 0.09), 0 8px 10px -6px rgb(15 29 50 / 0.09)',
-        'card': '0 1px 3px 0 rgb(20 43 74 / 0.05), 0 1px 2px -1px rgb(20 43 74 / 0.04)',
-        'card-hover': '0 10px 20px -5px rgb(20 43 74 / 0.08), 0 4px 6px -2px rgb(20 43 74 / 0.04)',
-        'brass': '0 4px 14px 0 rgb(198 168 117 / 0.25)',
+        'card': '0 1px 3px 0 rgb(20 43 74 / 0.04), 0 1px 2px -1px rgb(20 43 74 / 0.03)',
+        'card-hover': '0 10px 25px -5px rgb(20 43 74 / 0.07), 0 4px 10px -2px rgb(20 43 74 / 0.04)',
+        'card-elevated': '0 12px 32px -4px rgb(11 21 36 / 0.08), 0 4px 12px -2px rgb(11 21 36 / 0.04)',
+        'brass': '0 4px 14px 0 rgb(198 168 117 / 0.22)',
+        'brass-glow': '0 0 24px 0 rgb(198 168 117 / 0.28)',
+        'ai-glow': '0 0 35px 2px rgb(82 118 165 / 0.25)',
         'inner-soft': 'inset 0 2px 4px 0 rgb(15 29 50 / 0.04)',
       },
       borderRadius: {
@@ -155,11 +184,14 @@ export default {
         '3xl': '1.25rem',
       },
       animation: {
-        'fade-in': 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-down': 'slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'scale-in': 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'fade-in': 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-down': 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         'pulse-subtle': 'pulseSubtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-ai': 'pulseAi 2.4s ease-in-out infinite',
+        'spin-slow': 'spin 18s linear infinite',
+        'spin-reverse-slow': 'spinReverse 22s linear infinite',
         'float-slow': 'floatSlow 6s ease-in-out infinite',
       },
       keyframes: {
@@ -168,20 +200,28 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '0%': { transform: 'translateY(12px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '0%': { transform: 'translateY(-12px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         scaleIn: {
-          '0%': { transform: 'scale(0.96)', opacity: '0' },
+          '0%': { transform: 'scale(0.97)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
         pulseSubtle: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.65' },
+        },
+        pulseAi: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.9' },
+          '50%': { transform: 'scale(1.04)', opacity: '1' },
+        },
+        spinReverse: {
+          '0%': { transform: 'rotate(360deg)' },
+          '100%': { transform: 'rotate(0deg)' },
         },
         floatSlow: {
           '0%, 100%': { transform: 'translateY(0)' },

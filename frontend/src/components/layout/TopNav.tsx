@@ -86,7 +86,8 @@ export const TopNav: React.FC<TopNavProps> = ({
       '/invoices': 'Invoices',
       '/expenses': 'Expenses',
       '/alerts': 'Alerts',
-      '/copilot': 'AI Copilot',
+      '/copilot': 'Thread AI',
+      '/thread-ai': 'Thread AI',
       '/settings': 'Settings',
     };
     return titles[path] || 'ThreadPilot AI';
@@ -106,7 +107,8 @@ export const TopNav: React.FC<TopNavProps> = ({
       '/invoices': 'Supplier invoices with automated OCR extraction',
       '/expenses': 'Operational expenditure ledger and category analytics',
       '/alerts': 'Real-time operational alerts and critical events',
-      '/copilot': 'Intelligent conversational assistant for business operations',
+      '/copilot': 'Autonomous operational intelligence & commercial ledger advisor',
+      '/thread-ai': 'Autonomous operational intelligence & commercial ledger advisor',
       '/settings': 'Organization parameters, team access, and audit preferences',
     };
     return descriptions[path] || '';
@@ -164,11 +166,11 @@ export const TopNav: React.FC<TopNavProps> = ({
         <div className="flex items-center gap-2.5">
           {/* Quick AI shortcut button */}
           <NavLink
-            to="/copilot"
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-navy-800 bg-brass-50 border border-brass-200/80 hover:bg-brass-100 transition-colors"
+            to="/thread-ai"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-navy-950 bg-gradient-to-r from-brass-50 to-stone-50 border border-brass-200/90 hover:border-brass-400 hover:shadow-xs transition-all"
           >
             <Sparkles className="w-3.5 h-3.5 text-brass-600" />
-            <span>AI Copilot</span>
+            <span>Thread AI</span>
           </NavLink>
 
           {/* Notifications Popover */}

@@ -24,6 +24,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { DataTable } from '../components/tables/DataTable';
 import { dashboardApi, analyticsApi } from '../api/endpoints';
+import { ThreadAICore } from '../components/brand/ThreadAICore';
 import type { DashboardStats, RecentSale, RecentOrder, LowStockProduct, BusinessAlert } from '../types';
 
 interface DashboardMetrics {
@@ -64,10 +65,10 @@ const StatCard: React.FC<{
     <CardBody className="p-5">
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1 pr-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">{title}</p>
             {badgeText && (
-              <Badge variant="brass" size="sm" className="font-mono text-[10px] px-1.5 py-0.5">
+              <Badge variant="brass" size="sm" className="font-mono text-[9px] px-1.5 py-0.2 tracking-wider">
                 {badgeText}
               </Badge>
             )}
@@ -514,8 +515,8 @@ const InteractiveCopilotCard: React.FC = () => {
     const normY = (y / rect.height - 0.5) * 2;
 
     setTilt({
-      rx: -normY * 4,
-      ry: normX * 4,
+      rx: -normY * 3.5,
+      ry: normX * 3.5,
       px: (x / rect.width) * 100,
       py: (y / rect.height) * 100,
       active: true,
@@ -532,7 +533,7 @@ const InteractiveCopilotCard: React.FC = () => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{ perspective: '1000px' }}
-      className="relative rounded-xl select-none"
+      className="relative rounded-2xl select-none"
     >
       <div
         style={{
@@ -541,43 +542,72 @@ const InteractiveCopilotCard: React.FC = () => {
             : 'rotateX(0deg) rotateY(0deg) translateZ(0px)',
           transition: tilt.active ? 'transform 0.08s ease-out' : 'transform 0.4s ease-out',
         }}
-        className="relative bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 text-white rounded-xl p-5 shadow-sm border border-navy-700/70 overflow-hidden"
+        className="relative bg-gradient-to-br from-navy-950 via-[#0B1524] to-navy-900 text-white rounded-2xl p-5 sm:p-6 shadow-xl border border-navy-800/90 overflow-hidden"
       >
+        {/* Subtle dynamic ambient reflection */}
         <div
           className="pointer-events-none absolute inset-0 transition-opacity duration-300"
           style={{
-            background: `radial-gradient(circle 350px at ${tilt.px}% ${tilt.py}%, rgba(198, 168, 117, 0.16), transparent 70%)`,
+            background: `radial-gradient(circle 420px at ${tilt.px}% ${tilt.py}%, rgba(198, 168, 117, 0.18), transparent 70%)`,
             opacity: tilt.active ? 1 : 0.35,
           }}
         />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-navy-800 border border-brass-400/40 flex items-center justify-center flex-shrink-0 text-brass-400 shadow-inner">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white tracking-tight">ThreadPilot Copilot</h3>
-                <Badge variant="brass" size="sm" className="bg-brass-400/20 text-brass-300 border-brass-400/30 font-mono text-[10px]">
-                  Autonomous Agent
-                </Badge>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start sm:items-center gap-4">
+            {/* Live Animated 3D Thread AI Presence */}
+            <div className="flex-shrink-0 relative">
+              <div className="w-16 h-16 rounded-2xl bg-navy-900/90 border border-navy-700/80 flex items-center justify-center shadow-lg shadow-navy-950/40">
+                <ThreadAICore state="idle" size="md" interactive={false} />
               </div>
-              <p className="text-xs text-navy-200 mt-1 max-w-xl leading-relaxed">
-                Query inventory velocity, evaluate debtor exposures, or trigger bulk reconciliation with natural language.
+            </div>
+
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-bold text-white tracking-tight">Thread AI Operational Command</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-brass-400/20 text-brass-300 border border-brass-400/30 font-mono">
+                  Autonomous Intelligence
+                </span>
+                <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <p className="text-xs text-stone-300 mt-1 max-w-xl leading-relaxed font-normal">
+                Continuous neural synthesis of yarn allocations, customer receivable risk, and production margin velocity.
               </p>
+
+              {/* Instant Insight Triggers */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <a
+                  href="/thread-ai"
+                  className="px-2.5 py-1 rounded-lg bg-navy-800/80 hover:bg-navy-800 border border-navy-700 text-[11px] text-stone-300 hover:text-white transition-colors"
+                >
+                  Low Stock Spindles →
+                </a>
+                <a
+                  href="/thread-ai"
+                  className="px-2.5 py-1 rounded-lg bg-navy-800/80 hover:bg-navy-800 border border-navy-700 text-[11px] text-stone-300 hover:text-white transition-colors"
+                >
+                  Debtor Exposure →
+                </a>
+                <a
+                  href="/thread-ai"
+                  className="px-2.5 py-1 rounded-lg bg-navy-800/80 hover:bg-navy-800 border border-navy-700 text-[11px] text-stone-300 hover:text-white transition-colors"
+                >
+                  Margin Velocity →
+                </a>
+              </div>
             </div>
           </div>
+
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button 
               variant="brass" 
               size="sm" 
               asChild
-              className="whitespace-nowrap shadow-brass text-xs font-semibold"
+              className="whitespace-nowrap shadow-brass text-xs font-semibold px-4 py-2"
             >
-              <a href="/copilot" className="flex items-center gap-1.5">
-                <Bot className="w-3.5 h-3.5" />
-                Launch Copilot
+              <a href="/thread-ai" className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-navy-950" />
+                Launch Thread AI
               </a>
             </Button>
           </div>
@@ -1014,7 +1044,7 @@ export const Dashboard: React.FC = () => {
           value={stats ? `₹${Number(stats.outstandingPayments).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
           icon={<Users className="w-5 h-5 text-warning-600" />}
           subtitle="Uncollected invoice balances"
-          badgeText="OUTSTANDING"
+          badgeText="UNPAID"
         />
         <StatCard
           title="Inventory Valuation"

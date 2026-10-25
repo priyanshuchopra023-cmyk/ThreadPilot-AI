@@ -48,9 +48,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       // Success: Accessible emerald
       success:
         'bg-success-600 text-white hover:bg-success-700 active:bg-success-800 focus:ring-success-500 shadow-xs',
-      // Brass: Signature warm brass accent for premium enterprise actions
+      // Brass: Signature warm champagne brass accent for premium enterprise actions
       brass:
-        'bg-brass-500 text-white hover:bg-brass-600 active:bg-brass-700 focus:ring-brass-400 shadow-brass border border-brass-600/30',
+        'bg-gradient-to-r from-brass-300 via-brass-400 to-brass-300 text-navy-950 font-semibold hover:from-brass-200 hover:to-brass-300 active:from-brass-400 active:to-brass-500 focus:ring-brass-500 shadow-brass border border-brass-400/50',
     };
 
     const sizeClasses = {

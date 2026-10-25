@@ -113,6 +113,8 @@ public class CopilotService {
         AIConversation conversation = AIConversation.builder()
                 .title(title)
                 .status(ConversationStatus.ACTIVE)
+                .totalTokensUsed(0)
+                .totalCost(java.math.BigDecimal.ZERO)
                 .organization(new com.threadpilot.organization.Organization() {{ setId(orgId); }})
                 .user(new com.threadpilot.user.User() {{ setId(userId); }})
                 .lastMessageAt(Instant.now())
@@ -130,6 +132,7 @@ private void saveMessage(AIConversation conversation, String role, String conten
                 .provider(provider)
                 .modelUsed(model)
                 .tokensUsed(tokensUsed != null ? tokensUsed : 0)
+                .cost(java.math.BigDecimal.ZERO)
                 .conversation(conversation)
                 .organization(conversation.getOrganization())
                 .build();

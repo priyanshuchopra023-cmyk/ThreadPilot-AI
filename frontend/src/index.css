@@ -42,11 +42,19 @@
 @layer components {
   /* Premium Component Styles */
   .card-premium {
-    @apply bg-white rounded-xl border border-secondary-200/80 shadow-card transition-all duration-200 hover:shadow-card-hover hover:border-secondary-300/80;
+    @apply bg-white rounded-xl border border-secondary-200/90 shadow-card transition-all duration-200 hover:shadow-card-hover hover:border-secondary-300;
   }
 
   .card-elevated {
-    @apply bg-white rounded-xl border border-secondary-200 shadow-md;
+    @apply bg-white rounded-xl border border-secondary-200/90 shadow-card-elevated;
+  }
+
+  .surface-luxury {
+    @apply bg-white/95 backdrop-blur-sm border border-stone-200/80 shadow-card rounded-xl transition-all duration-300;
+  }
+
+  .surface-luxury-dark {
+    @apply bg-navy-950/90 backdrop-blur-md border border-navy-800/80 shadow-2xl text-white rounded-xl;
   }
 
   .badge-dot {
@@ -54,11 +62,11 @@
   }
 
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-card;
+    @apply bg-white/85 backdrop-blur-md border border-white/60 shadow-card;
   }
 
   .glass-card-dark {
-    @apply bg-navy-900/90 backdrop-blur-md border border-white/10 text-white shadow-xl;
+    @apply bg-navy-950/90 backdrop-blur-md border border-white/10 text-white shadow-xl;
   }
 
   .brass-gradient-text {
@@ -70,7 +78,12 @@
   }
 
   .brass-badge {
-    @apply bg-brass-50 text-brass-800 border border-brass-200/60 font-medium;
+    @apply bg-brass-50 text-brass-800 border border-brass-200/70 font-medium;
+  }
+
+  .thread-accent-line {
+    background: linear-gradient(90deg, rgba(198, 168, 117, 0) 0%, rgba(198, 168, 117, 0.45) 50%, rgba(198, 168, 117, 0) 100%);
+    height: 1px;
   }
 }
 
