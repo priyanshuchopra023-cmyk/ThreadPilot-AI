@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ThreadPilotLogo } from '../components/brand/ThreadPilotLogo';
 import { AuthHeroIllustration } from '../components/brand/AuthHeroIllustration';
+import { ThreadWeave3D } from '../components/brand/ThreadWeave3D';
 import toast from 'react-hot-toast';
 
 export const Login: React.FC = () => {
@@ -160,7 +161,7 @@ export const Login: React.FC = () => {
         <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>SOC2 Type II & Multi-Tenant Isolated Infrastructure</span>
+            <span>Encrypted Multi-Tenant Architecture</span>
           </div>
           <span className="tabular-nums font-mono">v1.0.0-PROD</span>
         </div>
@@ -169,9 +170,12 @@ export const Login: React.FC = () => {
       {/* Right Column: Clean, High-Contrast Sign-in Card */}
       <div className="flex-1 lg:col-span-6 xl:col-span-5 flex flex-col justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-16">
         <div className="w-full max-w-md mx-auto">
-          {/* Mobile Brand Header */}
-          <div className="lg:hidden mb-8 text-center">
-            <ThreadPilotLogo variant="full" theme="light" size="lg" className="justify-center" />
+          {/* Mobile Brand Header with 3D Preview */}
+          <div className="lg:hidden mb-6 flex flex-col items-center">
+            <ThreadPilotLogo variant="full" theme="light" size="lg" className="justify-center mb-3" />
+            <div className="w-full max-w-sm rounded-xl overflow-hidden shadow-md border border-navy-800/20 mb-1">
+              <ThreadWeave3D intensity="subtle" showTelemetryNodes={false} className="h-28 aspect-auto" />
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-secondary-200/90 shadow-xl p-8 sm:p-10">

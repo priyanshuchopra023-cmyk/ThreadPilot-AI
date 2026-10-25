@@ -19,6 +19,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ThreadPilotLogo } from '../components/brand/ThreadPilotLogo';
 import { AuthHeroIllustration } from '../components/brand/AuthHeroIllustration';
+import { ThreadWeave3D } from '../components/brand/ThreadWeave3D';
 import toast from 'react-hot-toast';
 
 export const Register: React.FC = () => {
@@ -218,16 +219,19 @@ export const Register: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Encrypted Multi-Tenant Architecture</span>
           </div>
-          <span className="font-mono text-slate-400">SOC2 Certified • 2026</span>
+          <span className="font-mono text-slate-400">Hardware Enclave • 2026</span>
         </div>
       </div>
 
       {/* Right Column: Clean, High-Contrast Registration Card */}
       <div className="flex-1 lg:col-span-7 xl:col-span-6 flex flex-col justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-14 overflow-y-auto">
         <div className="w-full max-w-xl mx-auto">
-          {/* Mobile Brand Header */}
-          <div className="lg:hidden mb-6 text-center">
-            <ThreadPilotLogo variant="full" theme="light" size="lg" className="justify-center" />
+          {/* Mobile Brand Header with 3D Preview */}
+          <div className="lg:hidden mb-6 flex flex-col items-center">
+            <ThreadPilotLogo variant="full" theme="light" size="lg" className="justify-center mb-3" />
+            <div className="w-full max-w-sm rounded-xl overflow-hidden shadow-md border border-navy-800/20 mb-1">
+              <ThreadWeave3D intensity="subtle" showTelemetryNodes={false} className="h-28 aspect-auto" />
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-secondary-200/90 shadow-xl p-7 sm:p-10">

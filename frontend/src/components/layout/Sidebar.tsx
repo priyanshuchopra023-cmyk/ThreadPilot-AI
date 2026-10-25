@@ -182,6 +182,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             }`}
                             aria-hidden="true"
                           />
+                          {isActive && (
+                            <span className="absolute left-0 top-2 bottom-2 w-1 bg-brass-400 rounded-r-sm" />
+                          )}
                           {!collapsed && (
                             <span className="flex-1 truncate tracking-tight">{item.name}</span>
                           )}
