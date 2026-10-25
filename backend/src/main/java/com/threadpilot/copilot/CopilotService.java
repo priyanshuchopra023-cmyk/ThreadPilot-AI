@@ -237,15 +237,18 @@ private void saveMessage(AIConversation conversation, String role, String conten
                                     "stock", i.getCurrentQuantity()
                             ))
                             .toList(), null);
-            case "getBusinessHealth" -> new ToolResult(toolCall.getName(), true,
-                    Map.of(
-                            "overall", context.getBusinessHealthScore().getOverallScore(),
-                            "inventory", context.getBusinessHealthScore().getInventoryHealth(),
-                            "sales", context.getBusinessHealthScore().getSalesHealth(),
-                            "collections", context.getBusinessHealthScore().getCollectionsHealth(),
-                            "profitability", context.getBusinessHealthScore().getProfitabilityHealth(),
-                            "slowMoving", context.getBusinessHealthScore().getSlowMovingHealth()
-                    ), null);
+            case "getBusinessHealth" -> {
+                var h = context.getBusinessHealthScore();
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("overall", h.getOverallScore() != null ? h.getOverallScore() : "Not enough data");
+                map.put("inventory", h.getInventoryHealth() != null ? h.getInventoryHealth() : "Not enough data");
+                map.put("sales", h.getSalesHealth() != null ? h.getSalesHealth() : "Not enough data");
+                map.put("collections", h.getCollectionsHealth() != null ? h.getCollectionsHealth() : "Not enough data");
+                map.put("profitability", h.getProfitabilityHealth() != null ? h.getProfitabilityHealth() : "Not enough data");
+                map.put("slowMoving", h.getSlowMovingHealth() != null ? h.getSlowMovingHealth() : "Not enough data");
+                map.put("hasSufficientData", h.getHasSufficientData() != null ? h.getHasSufficientData() : false);
+                yield new ToolResult(toolCall.getName(), true, map, null);
+            }
             case "getInventoryValue" -> new ToolResult(toolCall.getName(), true,
                     Map.of("totalValue", context.getTotalInventoryValue()), null);
             case "getCashFlow" -> new ToolResult(toolCall.getName(), true,

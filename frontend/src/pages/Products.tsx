@@ -252,7 +252,7 @@ export const Products: React.FC = () => {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-navy-500">Categories</p>
             <p className="text-xl font-bold text-navy-900 font-mono tabular-nums">
-              {new Set(products.map(p => p.category).filter(Boolean)).size || 1}
+              {new Set(products.map(p => p.category).filter(Boolean)).size}
             </p>
           </div>
         </div>
@@ -306,18 +306,41 @@ export const Products: React.FC = () => {
                 { 
                   key: 'name', 
                   header: 'Product Details',
-                  render: (row: Product) => (
-                    <div>
-                      <div className="font-medium text-xs text-navy-900">{row.name}</div>
-                      {(row.material || row.size || row.color) && (
-                        <div className="text-[11px] text-navy-400 mt-0.5 flex items-center gap-1.5 font-mono">
-                          {row.material && <span>{row.material}</span>}
-                          {row.size && <span>• Sz: {row.size}</span>}
-                          {row.color && <span>• {row.color}</span>}
+                  render: (row: Product) => {
+                    const hasValidImage = Boolean(
+                      row.imageUrl &&
+                      (row.imageUrl.startsWith('http://') ||
+                       row.imageUrl.startsWith('https://') ||
+                       row.imageUrl.startsWith('data:image/'))
+                    );
+
+                    return (
+                      <div className="flex items-center gap-3">
+                        {hasValidImage ? (
+                          <img 
+                            src={row.imageUrl} 
+                            alt={row.name} 
+                            className="w-9 h-9 rounded-lg object-cover border border-secondary-200 flex-shrink-0" 
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center flex-shrink-0 border border-navy-100/60">
+                            <Package className="w-4 h-4 text-navy-500" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-medium text-xs text-navy-900 truncate">{row.name}</div>
+                          {(row.material || row.size || row.color) && (
+                            <div className="text-[11px] text-navy-400 mt-0.5 flex items-center gap-1.5 font-mono truncate">
+                              {row.material && <span>{row.material}</span>}
+                              {row.size && <span>• Sz: {row.size}</span>}
+                              {row.color && <span>• {row.color}</span>}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )
+                      </div>
+                    );
+                  }
                 },
                 { 
                   key: 'category', 
@@ -404,6 +427,10 @@ export const Products: React.FC = () => {
                 onPageChange: (newPage) => setPage(newPage),
               }}
               emptyMessage="No products found in catalogue"
+              emptyAction={{
+                label: '+ Add First Product',
+                onClick: openCreateModal,
+              }}
             />
           )}
         </CardBody>

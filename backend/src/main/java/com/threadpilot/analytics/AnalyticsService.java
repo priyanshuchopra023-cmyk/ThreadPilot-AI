@@ -60,19 +60,50 @@ private final SaleRepository saleRepository;
         BigDecimal profitabilityScore = calculateProfitabilityHealth(orgId);
         BigDecimal slowMovingScore = calculateSlowMovingHealth(orgId);
 
-        BigDecimal totalScore = inventoryScore.multiply(BigDecimal.valueOf(0.25))
-                .add(salesScore.multiply(BigDecimal.valueOf(0.20)))
-                .add(collectionsScore.multiply(BigDecimal.valueOf(0.20)))
-                .add(profitabilityScore.multiply(BigDecimal.valueOf(0.20)))
-                .add(slowMovingScore.multiply(BigDecimal.valueOf(0.15)));
+        BigDecimal weightedSum = BigDecimal.ZERO;
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        if (inventoryScore != null) {
+            weightedSum = weightedSum.add(inventoryScore.multiply(BigDecimal.valueOf(0.25)));
+            totalWeight = totalWeight.add(BigDecimal.valueOf(0.25));
+        }
+        if (salesScore != null) {
+            weightedSum = weightedSum.add(salesScore.multiply(BigDecimal.valueOf(0.20)));
+            totalWeight = totalWeight.add(BigDecimal.valueOf(0.20));
+        }
+        if (collectionsScore != null) {
+            weightedSum = weightedSum.add(collectionsScore.multiply(BigDecimal.valueOf(0.20)));
+            totalWeight = totalWeight.add(BigDecimal.valueOf(0.20));
+        }
+        if (profitabilityScore != null) {
+            weightedSum = weightedSum.add(profitabilityScore.multiply(BigDecimal.valueOf(0.20)));
+            totalWeight = totalWeight.add(BigDecimal.valueOf(0.20));
+        }
+        if (slowMovingScore != null) {
+            weightedSum = weightedSum.add(slowMovingScore.multiply(BigDecimal.valueOf(0.15)));
+            totalWeight = totalWeight.add(BigDecimal.valueOf(0.15));
+        }
+
+        Integer overallScore = null;
+        boolean hasSufficientData = totalWeight.compareTo(BigDecimal.ZERO) > 0;
+        String statusMessage = hasSufficientData
+                ? "Operational index calculated from active business metrics"
+                : "Not enough data to calculate operational baseline";
+
+        if (hasSufficientData) {
+            overallScore = weightedSum.divide(totalWeight, 4, RoundingMode.HALF_UP)
+                    .setScale(0, RoundingMode.HALF_UP).intValue();
+        }
 
         return BusinessHealthScore.builder()
-                .overallScore(totalScore.setScale(0, RoundingMode.HALF_UP).intValue())
-                .inventoryHealth(inventoryScore.setScale(0, RoundingMode.HALF_UP).intValue())
-                .salesHealth(salesScore.setScale(0, RoundingMode.HALF_UP).intValue())
-                .collectionsHealth(collectionsScore.setScale(0, RoundingMode.HALF_UP).intValue())
-                .profitabilityHealth(profitabilityScore.setScale(0, RoundingMode.HALF_UP).intValue())
-                .slowMovingHealth(slowMovingScore.setScale(0, RoundingMode.HALF_UP).intValue())
+                .overallScore(overallScore)
+                .inventoryHealth(inventoryScore != null ? inventoryScore.setScale(0, RoundingMode.HALF_UP).intValue() : null)
+                .salesHealth(salesScore != null ? salesScore.setScale(0, RoundingMode.HALF_UP).intValue() : null)
+                .collectionsHealth(collectionsScore != null ? collectionsScore.setScale(0, RoundingMode.HALF_UP).intValue() : null)
+                .profitabilityHealth(profitabilityScore != null ? profitabilityScore.setScale(0, RoundingMode.HALF_UP).intValue() : null)
+                .slowMovingHealth(slowMovingScore != null ? slowMovingScore.setScale(0, RoundingMode.HALF_UP).intValue() : null)
+                .hasSufficientData(hasSufficientData)
+                .statusMessage(statusMessage)
                 .build();
     }
 
@@ -173,12 +204,13 @@ private final SaleRepository saleRepository;
 
     private BigDecimal calculateInventoryHealth(UUID orgId) {
         Long totalProducts = productRepository.countActiveByOrganizationId(orgId);
-        Long lowStockCount = inventoryRepository.countLowStock(orgId, 10);
+        if (totalProducts == null || totalProducts == 0) return null;
 
-        if (totalProducts == 0) return BigDecimal.valueOf(100);
+        Long lowStockCount = inventoryRepository.countLowStock(orgId, 10);
+        long lowCount = lowStockCount != null ? lowStockCount : 0L;
 
         BigDecimal health = BigDecimal.valueOf(100).subtract(
-                BigDecimal.valueOf(lowStockCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalProducts), 4, RoundingMode.HALF_UP)
+                BigDecimal.valueOf(lowCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalProducts), 4, RoundingMode.HALF_UP)
         );
         return health.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
     }
@@ -192,29 +224,45 @@ private final SaleRepository saleRepository;
         BigDecimal currentMonthSales = saleRepository.getTotalRevenueByDateRange(orgId, startOfMonth, today);
         BigDecimal prevMonthSales = saleRepository.getTotalRevenueByDateRange(orgId, startOfPrevMonth, endOfPrevMonth);
 
-        if (currentMonthSales == null) {
-            currentMonthSales = BigDecimal.ZERO;
-        }
-        if (prevMonthSales == null || prevMonthSales.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.valueOf(75); // Neutral score
+        boolean hasCurrent = currentMonthSales != null && currentMonthSales.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasPrev = prevMonthSales != null && prevMonthSales.compareTo(BigDecimal.ZERO) > 0;
+
+        if (!hasCurrent && !hasPrev) {
+            return null; // Not enough sales data to compute velocity
         }
 
-        BigDecimal growthRate = currentMonthSales.subtract(prevMonthSales).divide(prevMonthSales, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        if (hasPrev) {
+            BigDecimal current = currentMonthSales != null ? currentMonthSales : BigDecimal.ZERO;
+            BigDecimal growthRate = current.subtract(prevMonthSales)
+                    .divide(prevMonthSales, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
 
-        // Score based on growth: -50% = 0, 0% = 50, 50% = 100
-        BigDecimal score = BigDecimal.valueOf(50).add(growthRate);
-        return score.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+            BigDecimal score = BigDecimal.valueOf(50).add(growthRate);
+            return score.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+        }
+
+        return BigDecimal.valueOf(80);
     }
 
     private BigDecimal calculateCollectionsHealth(UUID orgId) {
         BigDecimal totalReceivables = getTotalReceivables(orgId);
         BigDecimal totalPayables = getTotalPayables(orgId);
 
-        if (totalReceivables.compareTo(BigDecimal.ZERO) == 0) {
+        boolean hasReceivables = totalReceivables != null && totalReceivables.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasPayables = totalPayables != null && totalPayables.compareTo(BigDecimal.ZERO) > 0;
+
+        if (!hasReceivables && !hasPayables) {
+            return null; // No ledger activity to compute collections
+        }
+
+        if (hasReceivables && !hasPayables) {
             return BigDecimal.valueOf(100);
         }
 
-        // Simple ratio: if receivables > payables, good health
+        if (!hasReceivables && hasPayables) {
+            return BigDecimal.ZERO;
+        }
+
         BigDecimal ratio = totalPayables.divide(totalReceivables, 4, RoundingMode.HALF_UP);
         BigDecimal score = BigDecimal.valueOf(100).subtract(ratio.multiply(BigDecimal.valueOf(50)));
         return score.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
@@ -225,15 +273,15 @@ private final SaleRepository saleRepository;
         LocalDate today = LocalDate.now();
 
         BigDecimal revenue = saleRepository.getTotalRevenueByDateRange(orgId, startOfMonth, today);
-        BigDecimal grossProfit = saleRepository.getTotalGrossProfitByDateRange(orgId, startOfMonth, today);
-
         if (revenue == null || revenue.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.valueOf(50);
+            return null; // No revenue to compute profit margin
         }
 
-        BigDecimal margin = grossProfit.divide(revenue, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        BigDecimal grossProfit = saleRepository.getTotalGrossProfitByDateRange(orgId, startOfMonth, today);
+        BigDecimal profit = grossProfit != null ? grossProfit : BigDecimal.ZERO;
 
-        // Score: 0% margin = 0, 20% = 50, 40% = 100
+        BigDecimal margin = profit.divide(revenue, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+
         BigDecimal score = margin.multiply(BigDecimal.valueOf(2.5));
         return score.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
     }
@@ -242,7 +290,7 @@ private BigDecimal calculateSlowMovingHealth(UUID orgId) {
         Long totalProducts = productRepository.countActiveByOrganizationId(orgId);
         Long slowMovingCount = productRepository.countSlowMoving(orgId, LocalDate.now().minusDays(90));
 
-        if (totalProducts == 0) return BigDecimal.valueOf(100);
+        if (totalProducts == null || totalProducts == 0) return null;
 
         BigDecimal health = BigDecimal.valueOf(100).subtract(
                 BigDecimal.valueOf(slowMovingCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalProducts), 4, RoundingMode.HALF_UP)
@@ -253,12 +301,14 @@ private BigDecimal calculateSlowMovingHealth(UUID orgId) {
     @lombok.Builder
     @lombok.Data
     public static class BusinessHealthScore {
-        private int overallScore;
-        private int inventoryHealth;
-        private int salesHealth;
-        private int collectionsHealth;
-        private int profitabilityHealth;
-        private int slowMovingHealth;
+        private Integer overallScore;
+        private Integer inventoryHealth;
+        private Integer salesHealth;
+        private Integer collectionsHealth;
+        private Integer profitabilityHealth;
+        private Integer slowMovingHealth;
+        private Boolean hasSufficientData;
+        private String statusMessage;
     }
 
 @lombok.Builder

@@ -22,6 +22,11 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   loading?: boolean;
   emptyMessage?: string;
+  emptyAction?: {
+    label: string;
+    onClick?: () => void;
+    href?: string;
+  };
   pagination?: {
     enabled: boolean;
     pageSize?: number;
@@ -44,6 +49,7 @@ export function DataTable<T>({
   onRowClick,
   loading = false,
   emptyMessage = 'No data available',
+  emptyAction,
   pagination,
   className = '',
 }: DataTableProps<T>) {
@@ -180,7 +186,7 @@ export function DataTable<T>({
                 <th
                   key={col.key}
                   className={`
-                    px-4.5 py-3 text-[11px] font-semibold text-secondary-600 uppercase tracking-wider
+                    px-4 py-3 text-[11px] font-semibold text-secondary-600 uppercase tracking-wider
                     ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
                     ${col.sortable && sortable ? 'cursor-pointer hover:text-navy-900 transition-colors' : ''}
                   `}
@@ -225,6 +231,26 @@ export function DataTable<T>({
                     </div>
                     <p className="text-sm font-medium text-secondary-600">{emptyMessage}</p>
                     <p className="text-xs text-secondary-400 mt-0.5">Records will appear here once created</p>
+                    {emptyAction && (
+                      <div className="mt-4">
+                        {emptyAction.href ? (
+                          <a
+                            href={emptyAction.href}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-900 text-white hover:bg-navy-800 active:scale-[0.98] transition-all shadow-xs"
+                          >
+                            {emptyAction.label}
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={emptyAction.onClick}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-900 text-white hover:bg-navy-800 active:scale-[0.98] transition-all shadow-xs"
+                          >
+                            {emptyAction.label}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -238,7 +264,7 @@ export function DataTable<T>({
                     <td
                       key={col.key}
                       className={`
-                        px-4.5 py-3.5 text-sm text-secondary-900 tabular-nums
+                        px-4 py-3.5 text-sm text-secondary-900 tabular-nums
                         ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
                       `}
                     >

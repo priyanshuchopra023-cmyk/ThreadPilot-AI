@@ -42,12 +42,14 @@ interface DashboardMetrics {
 }
 
 interface BusinessHealthScore {
-  overallScore: number;
-  inventoryHealth: number;
-  salesHealth: number;
-  collectionsHealth: number;
-  profitabilityHealth: number;
-  slowMovingHealth: number;
+  overallScore: number | null;
+  inventoryHealth: number | null;
+  salesHealth: number | null;
+  collectionsHealth: number | null;
+  profitabilityHealth: number | null;
+  slowMovingHealth: number | null;
+  hasSufficientData?: boolean;
+  statusMessage?: string;
 }
 
 const StatCard: React.FC<{
@@ -137,6 +139,10 @@ const RecentSalesTable: React.FC<{ data: RecentSale[] }> = ({ data }) => (
         ]}
         keyExtractor={(row) => row.id}
         emptyMessage="No recent sales found"
+        emptyAction={{
+          label: '+ Record First Sale',
+          href: '/sales',
+        }}
         searchable={false}
         pagination={{ enabled: false }}
       />
@@ -192,6 +198,10 @@ const RecentOrdersTable: React.FC<{ data: RecentOrder[] }> = ({ data }) => (
         ]}
         keyExtractor={(row) => row.id}
         emptyMessage="No recent orders found"
+        emptyAction={{
+          label: '+ Create First Order',
+          href: '/orders',
+        }}
         searchable={false}
         pagination={{ enabled: false }}
       />
@@ -490,6 +500,253 @@ const UpcomingDueInvoicesCard: React.FC = () => {
   );
 };
 
+const InteractiveCopilotCard: React.FC = () => {
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, px: 50, py: 50, active: false });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const normX = (x / rect.width - 0.5) * 2;
+    const normY = (y / rect.height - 0.5) * 2;
+
+    setTilt({
+      rx: -normY * 4,
+      ry: normX * 4,
+      px: (x / rect.width) * 100,
+      py: (y / rect.height) * 100,
+      active: true,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ rx: 0, ry: 0, px: 50, py: 50, active: false });
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ perspective: '1000px' }}
+      className="relative rounded-xl select-none"
+    >
+      <div
+        style={{
+          transform: tilt.active
+            ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateZ(4px)`
+            : 'rotateX(0deg) rotateY(0deg) translateZ(0px)',
+          transition: tilt.active ? 'transform 0.08s ease-out' : 'transform 0.4s ease-out',
+        }}
+        className="relative bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 text-white rounded-xl p-5 shadow-sm border border-navy-700/70 overflow-hidden"
+      >
+        <div
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(circle 350px at ${tilt.px}% ${tilt.py}%, rgba(198, 168, 117, 0.16), transparent 70%)`,
+            opacity: tilt.active ? 1 : 0.35,
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-navy-800 border border-brass-400/40 flex items-center justify-center flex-shrink-0 text-brass-400 shadow-inner">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white tracking-tight">ThreadPilot Copilot</h3>
+                <Badge variant="brass" size="sm" className="bg-brass-400/20 text-brass-300 border-brass-400/30 font-mono text-[10px]">
+                  Autonomous Agent
+                </Badge>
+              </div>
+              <p className="text-xs text-navy-200 mt-1 max-w-xl leading-relaxed">
+                Query inventory velocity, evaluate debtor exposures, or trigger bulk reconciliation with natural language.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button 
+              variant="brass" 
+              size="sm" 
+              asChild
+              className="whitespace-nowrap shadow-brass text-xs font-semibold"
+            >
+              <a href="/copilot" className="flex items-center gap-1.5">
+                <Bot className="w-3.5 h-3.5" />
+                Launch Copilot
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RevenueTrendCard: React.FC = () => {
+  const [period, setPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+
+  const { data: trendData, isLoading } = useQuery({
+    queryKey: ['revenue-trend', period],
+    queryFn: async () => {
+      const res = await analyticsApi.getRevenueTrend(period);
+      return (res.data || []) as Array<{ period: string; revenue: number }>;
+    },
+  });
+
+  const points = trendData || [];
+  const totalRevenue = points.reduce((acc, p) => acc + (Number(p.revenue) || 0), 0);
+  const maxRevenue = Math.max(...points.map((p) => Number(p.revenue) || 0), 0);
+  const hasData = points.length > 0 && totalRevenue > 0;
+
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader
+        title={
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-navy-700" />
+            <span>Revenue Trajectory</span>
+          </div>
+        }
+        description="Recognized wholesale sales receipts over selected horizon"
+        action={
+          <div className="flex items-center gap-1 bg-navy-50/80 p-0.5 rounded-lg border border-navy-100">
+            {(['week', 'month', 'quarter', 'year'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all duration-150 capitalize ${
+                  period === p
+                    ? 'bg-white text-navy-900 shadow-xs font-bold'
+                    : 'text-navy-500 hover:text-navy-800'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <CardBody className="p-5 flex-1 flex flex-col justify-between">
+        {isLoading ? (
+          <div className="py-12 flex flex-col items-center justify-center space-y-3 animate-pulse">
+            <div className="h-4 bg-navy-100 rounded w-1/3" />
+            <div className="h-24 bg-navy-50 rounded w-full" />
+          </div>
+        ) : !hasData ? (
+          <div className="py-10 px-4 flex flex-col items-center justify-center text-center">
+            <div className="w-11 h-11 rounded-xl bg-navy-50 border border-navy-100 flex items-center justify-center text-navy-500 mb-3 shadow-xs">
+              <TrendingUp className="w-5 h-5 text-navy-600" />
+            </div>
+            <h4 className="text-sm font-semibold text-navy-900">No Sales in Selected Period</h4>
+            <p className="text-xs text-navy-500 max-w-sm mt-1 mb-4 leading-relaxed">
+              Revenue trajectory will plot here automatically once wholesale sales are invoiced.
+            </p>
+            <Button variant="primary" size="sm" asChild leftIcon={<Plus className="w-3.5 h-3.5" />}>
+              <a href="/sales">Record First Sale</a>
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-baseline justify-between border-b border-navy-100/70 pb-3">
+              <div>
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-navy-500">
+                  Total Horizon Revenue
+                </span>
+                <p className="text-2xl font-bold text-navy-900 font-mono tabular-nums">
+                  ₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-navy-500">
+                  Peak Velocity
+                </span>
+                <p className="text-sm font-bold text-navy-800 font-mono tabular-nums">
+                  ₹{maxRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+            {/* SVG Area / Line Chart */}
+            <div className="w-full overflow-hidden">
+              <svg viewBox="0 0 520 160" className="w-full h-44 overflow-visible">
+                <defs>
+                  <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#142B4A" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#142B4A" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Horizontal Guide Lines */}
+                <line x1="40" y1="20" x2="500" y2="20" stroke="#E2E8F0" strokeDasharray="3 3" />
+                <line x1="40" y1="75" x2="500" y2="75" stroke="#E2E8F0" strokeDasharray="3 3" />
+                <line x1="40" y1="130" x2="500" y2="130" stroke="#CBD5E1" />
+
+                {/* Y-Axis Value Labels */}
+                <text x="32" y="24" textAnchor="end" className="text-[9px] fill-navy-400 font-mono">
+                  ₹{Math.round(maxRevenue).toLocaleString('en-IN')}
+                </text>
+                <text x="32" y="79" textAnchor="end" className="text-[9px] fill-navy-400 font-mono">
+                  ₹{Math.round(maxRevenue / 2).toLocaleString('en-IN')}
+                </text>
+                <text x="32" y="134" textAnchor="end" className="text-[9px] fill-navy-400 font-mono">
+                  ₹0
+                </text>
+
+                {/* Compute Path Points */}
+                {(() => {
+                  const paddingX = 45;
+                  const chartW = 455;
+                  const paddingTop = 20;
+                  const chartH = 110;
+                  const headroom = maxRevenue * 1.15 || 1;
+
+                  const coords = points.map((p, idx) => {
+                    const x = points.length > 1
+                      ? paddingX + (idx / (points.length - 1)) * chartW
+                      : paddingX + chartW / 2;
+                    const y = paddingTop + chartH - ((Number(p.revenue) || 0) / headroom) * chartH;
+                    return { x, y, period: p.period, revenue: p.revenue };
+                  });
+
+                  const linePath = coords.reduce((acc, pt, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`, '');
+                  const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${paddingTop + chartH} L ${coords[0].x} ${paddingTop + chartH} Z`;
+
+                  return (
+                    <g>
+                      <path d={areaPath} fill="url(#revenueGradient)" />
+                      <path d={linePath} fill="none" stroke="#142B4A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {coords.map((pt, i) => (
+                        <g key={i}>
+                          <circle cx={pt.x} cy={pt.y} r="3.5" fill="#FFFFFF" stroke="#142B4A" strokeWidth="2" />
+                          {/* X-axis label */}
+                          <text
+                            x={pt.x}
+                            y="148"
+                            textAnchor="middle"
+                            className="text-[9px] fill-navy-500 font-mono"
+                          >
+                            {pt.period.includes('to') ? `Wk ${i + 1}` : pt.period.length > 6 ? pt.period.slice(-5) : pt.period}
+                          </text>
+                        </g>
+                      ))}
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+};
+
 const BusinessHealthCard: React.FC = () => {
   const { data: health, isLoading } = useQuery({
     queryKey: ['business-health'],
@@ -501,13 +758,16 @@ const BusinessHealthCard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader title="Business Health Score" description="Multi-dimensional operations index" />
-        <CardBody className="animate-pulse space-y-3">
+        <CardBody className="animate-pulse space-y-4 p-5 flex-1">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div className="h-4 bg-navy-50 rounded w-1/3" />
-              <div className="h-4 bg-navy-50 rounded w-16" />
+            <div key={i} className="space-y-1.5">
+              <div className="flex justify-between">
+                <div className="h-3.5 bg-navy-100 rounded w-1/3" />
+                <div className="h-3.5 bg-navy-100 rounded w-12" />
+              </div>
+              <div className="h-1.5 bg-navy-100 rounded-full" />
             </div>
           ))}
         </CardBody>
@@ -515,58 +775,105 @@ const BusinessHealthCard: React.FC = () => {
     );
   }
 
-  if (!health) {
-    return (
-      <Card>
-        <CardHeader title="Business Health Score" description="Multi-dimensional operations index" />
-        <CardBody className="text-center text-navy-400 py-8 text-sm">
-          Analytics baseline calculating...
-        </CardBody>
-      </Card>
-    );
-  }
+  const isBaselinePending = !health || health.overallScore === null || health.hasSufficientData === false;
 
   const metrics = [
-    { label: 'Overall Index', value: health.overallScore },
-    { label: 'Inventory Turnover', value: health.inventoryHealth },
-    { label: 'Sales Velocity', value: health.salesHealth },
-    { label: 'Collections Rate', value: health.collectionsHealth },
-    { label: 'Profit Margin', value: health.profitabilityHealth },
-    { label: 'Aging Stock', value: health.slowMovingHealth },
+    {
+      label: 'Inventory Health',
+      description: 'Stock levels vs safety reorder thresholds',
+      value: health?.inventoryHealth ?? null,
+    },
+    {
+      label: 'Sales Velocity',
+      description: 'Month-over-month revenue growth momentum',
+      value: health?.salesHealth ?? null,
+    },
+    {
+      label: 'Collections Rate',
+      description: 'Receivables vs supplier obligations ratio',
+      value: health?.collectionsHealth ?? null,
+    },
+    {
+      label: 'Profit Margin',
+      description: 'Realized gross margin on closed sales orders',
+      value: health?.profitabilityHealth ?? null,
+    },
+    {
+      label: 'Stock Turnover',
+      description: 'Active catalog turnover vs slow-moving (>90d)',
+      value: health?.slowMovingHealth ?? null,
+    },
   ];
 
   return (
     <Card className="h-full flex flex-col">
       <CardHeader 
         title="Business Health Score" 
-        description="Comprehensive real-time performance score" 
+        description="Multi-factor operational performance index" 
         action={
-          <Badge variant={health.overallScore >= 70 ? 'success' : health.overallScore >= 40 ? 'warning' : 'danger'} size="sm">
-            {health.overallScore}% Overall
-          </Badge>
+          isBaselinePending ? (
+            <Badge variant="secondary" size="sm" dot>
+              Baseline Pending
+            </Badge>
+          ) : (
+            <Badge
+              variant={health.overallScore! >= 70 ? 'success' : health.overallScore! >= 40 ? 'warning' : 'danger'}
+              size="sm"
+            >
+              {health.overallScore}% Overall
+            </Badge>
+          )
         }
       />
-      <CardBody className="space-y-3.5 flex-1 flex flex-col justify-between">
-        {metrics.map((m) => (
-          <div key={m.label} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-navy-700">{m.label}</span>
-              <span className={`font-mono font-bold tabular-nums ${
-                m.value >= 70 ? 'text-success-600' : m.value >= 40 ? 'text-warning-600' : 'text-danger-600'
-              }`}>
-                {m.value}%
-              </span>
+      <CardBody className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+        <div className="space-y-3.5">
+          {metrics.map((m) => (
+            <div key={m.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-navy-800" title={m.description}>
+                  {m.label}
+                </span>
+                {m.value !== null && m.value !== undefined ? (
+                  <span className={`font-mono font-bold tabular-nums ${
+                    m.value >= 70 ? 'text-success-600' : m.value >= 40 ? 'text-warning-600' : 'text-danger-600'
+                  }`}>
+                    {m.value}%
+                  </span>
+                ) : (
+                  <span className="font-mono text-[11px] text-navy-400 font-medium">
+                    Not enough data
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-navy-500 leading-tight">
+                {m.description}
+              </p>
+              <div className="h-1.5 w-full bg-navy-100/70 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    m.value === null || m.value === undefined
+                      ? 'bg-transparent'
+                      : m.value >= 70
+                      ? 'bg-success-500'
+                      : m.value >= 40
+                      ? 'bg-warning-500'
+                      : 'bg-danger-500'
+                  }`}
+                  style={{ width: `${m.value !== null && m.value !== undefined ? Math.min(100, Math.max(0, m.value)) : 0}%` }}
+                />
+              </div>
             </div>
-            <div className="h-1.5 w-full bg-navy-100/70 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  m.value >= 70 ? 'bg-success-500' : m.value >= 40 ? 'bg-warning-500' : 'bg-danger-500'
-                }`}
-                style={{ width: `${Math.min(100, Math.max(0, m.value))}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <div className="p-3 rounded-lg bg-navy-50/70 border border-navy-100/80 flex items-start gap-2.5 mt-2">
+          <ShieldCheck className="w-4 h-4 text-navy-600 flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-navy-600 leading-relaxed">
+            {isBaselinePending
+              ? (health?.statusMessage || 'Calculates automatically once sales transactions, stock updates, and invoices are recorded.')
+              : 'Performance scores calibrate against 30-day moving sales velocity and reorder thresholds.'}
+          </p>
+        </div>
       </CardBody>
     </Card>
   );
@@ -720,50 +1027,21 @@ export const Dashboard: React.FC = () => {
 
       {/* Operational Highlights & Insights Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {/* Quick AI Advisor & Action Bar */}
-          <div className="bg-gradient-to-r from-navy-900 to-navy-800 text-white rounded-xl p-5 shadow-sm border border-navy-700/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-navy-800 border border-brass-400/30 flex items-center justify-center flex-shrink-0 text-brass-400 shadow-inner">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-white">ThreadPilot Copilot</h3>
-                  <Badge variant="brass" size="sm" className="bg-brass-400/20 text-brass-300 border-brass-400/30">
-                    AI Enabled
-                  </Badge>
-                </div>
-                <p className="text-xs text-navy-200 mt-0.5 max-w-xl">
-                  Ask natural language questions about your yarn allocation, order margins, low stock alerts, or credit limits.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button 
-                variant="brass" 
-                size="sm" 
-                asChild
-                className="whitespace-nowrap shadow-brass text-xs font-semibold"
-              >
-                <a href="/copilot" className="flex items-center gap-1.5">
-                  <Bot className="w-3.5 h-3.5" />
-                  Launch Copilot
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            <RecentSalesTable data={recentSales} />
-            <RecentOrdersTable data={recentOrders} />
-          </div>
+        <div className="lg:col-span-2 space-y-6">
+          <InteractiveCopilotCard />
+          <RevenueTrendCard />
         </div>
 
         {/* Business Health Score */}
         <div className="lg:col-span-1">
           <BusinessHealthCard />
         </div>
+      </div>
+
+      {/* Recent Activity: Sales & Orders */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <RecentSalesTable data={recentSales} />
+        <RecentOrdersTable data={recentOrders} />
       </div>
 
       {/* Working Capital & Stock Alert Row */}
