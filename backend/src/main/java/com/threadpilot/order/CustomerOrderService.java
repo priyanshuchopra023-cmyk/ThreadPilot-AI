@@ -116,7 +116,7 @@ public class CustomerOrderService {
         return orderRepository.save(order);
     }
 
-@Transactional
+    @Transactional
     public CustomerOrder addItem(UUID orderId, CustomerOrderItem item) {
         final UUID orgId = TenantContext.requireTenantId();
         final UUID capturedOrgId = orgId;
@@ -171,6 +171,19 @@ public class CustomerOrderService {
             throw new BusinessException("INVALID_STATE", "Cannot confirm order with no items");
         }
 
+        Customer customer = order.getCustomer();
+
+        // Enforce customer credit limit policy
+        if (customer.getCreditLimit() != null && customer.getCreditLimit().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal currentOutstanding = customer.getOutstandingAmount() != null ? customer.getOutstandingAmount() : BigDecimal.ZERO;
+            BigDecimal projectedBalance = currentOutstanding.add(order.getTotalAmount());
+            if (projectedBalance.compareTo(customer.getCreditLimit()) > 0) {
+                throw new BusinessException("CREDIT_LIMIT_EXCEEDED",
+                        String.format("Order total (%s) plus current outstanding (%s) exceeds credit limit (%s) for customer '%s'",
+                                order.getTotalAmount(), currentOutstanding, customer.getCreditLimit(), customer.getName()));
+            }
+        }
+
         // Reserve inventory for each item
         for (CustomerOrderItem item : order.getItems()) {
             if (item.getProduct() != null) {
@@ -189,7 +202,6 @@ public class CustomerOrderService {
         order = orderRepository.save(order);
 
         // Update customer outstanding
-        Customer customer = order.getCustomer();
         customer.setOutstandingAmount(customer.getOutstandingAmount().add(order.getTotalAmount()));
         customerRepository.save(customer);
 
@@ -271,27 +283,39 @@ public class CustomerOrderService {
     }
 
     private void recalculateOrderTotals(CustomerOrder order) {
-        BigDecimal subtotal = order.getItems().stream()
-                .map(CustomerOrderItem::getLineTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            order.setSubtotal(BigDecimal.ZERO);
+            order.setTaxAmount(BigDecimal.ZERO);
+            order.setDiscountAmount(BigDecimal.ZERO);
+            order.setTotalAmount(BigDecimal.ZERO);
+            order.setOutstandingAmount(BigDecimal.ZERO);
+            return;
+        }
 
-        BigDecimal taxAmount = order.getItems().stream()
-                .map(item -> item.getLineTotal().subtract(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).subtract(
-                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).multiply(item.getDiscountRate().divide(BigDecimal.valueOf(100)))
-                )).multiply(item.getTaxRate().divide(BigDecimal.valueOf(100))))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal subtotal = order.getItems().stream()
+                .map(CustomerOrderItem::getBaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
 
         BigDecimal discountAmount = order.getItems().stream()
-                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).multiply(item.getDiscountRate().divide(BigDecimal.valueOf(100))))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(CustomerOrderItem::getDiscountAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
 
-        BigDecimal totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
+        BigDecimal taxAmount = order.getItems().stream()
+                .map(CustomerOrderItem::getTaxAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+
+        BigDecimal totalAmount = subtotal.subtract(discountAmount).add(taxAmount).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal paidAmount = order.getPaidAmount() != null ? order.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal outstanding = totalAmount.subtract(paidAmount).setScale(2, java.math.RoundingMode.HALF_UP);
 
         order.setSubtotal(subtotal);
         order.setTaxAmount(taxAmount);
         order.setDiscountAmount(discountAmount);
         order.setTotalAmount(totalAmount);
-        order.setOutstandingAmount(totalAmount.subtract(order.getPaidAmount()));
+        order.setOutstandingAmount(outstanding.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : outstanding);
     }
 
     private void createBusinessEvent(CustomerOrder order, EventType eventType, String description) {
@@ -309,4 +333,3 @@ public class CustomerOrderService {
         businessEventRepository.save(event);
     }
 }
-

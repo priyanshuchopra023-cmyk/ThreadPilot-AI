@@ -1,6 +1,7 @@
 package com.threadpilot.auth;
 
 import com.threadpilot.auth.dto.AuthResponse;
+import com.threadpilot.auth.dto.ChangePasswordRequest;
 import com.threadpilot.auth.dto.LoginRequest;
 import com.threadpilot.auth.dto.RegisterRequest;
 import com.threadpilot.auth.dto.UserProfile;
@@ -77,9 +78,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(profile));
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Password changed successfully"));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
     }
 }
-

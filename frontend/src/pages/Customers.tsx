@@ -340,28 +340,44 @@ export const Customers: React.FC = () => {
                 },
                 { 
                   key: 'creditLimit', 
-                  header: 'Credit Limit', 
+                  header: 'Credit Terms & Limit', 
                   align: 'right', 
-                  width: '120px', 
+                  width: '140px', 
                   render: (row) => (
-                    <span className="font-mono text-xs text-navy-700 tabular-nums">
-                      ₹{Number(row.creditLimit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-xs text-navy-800 tabular-nums font-semibold block">
+                        ₹{Number(row.creditLimit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                      {row.paymentTerms && (
+                        <span className="text-[10px] text-navy-500 font-mono">
+                          {row.paymentTerms}
+                        </span>
+                      )}
+                    </div>
                   ) 
                 },
                 { 
                   key: 'outstandingAmount', 
                   header: 'Outstanding', 
                   align: 'right', 
-                  width: '130px', 
+                  width: '140px', 
                   render: (row) => {
                     const outstanding = Number(row.outstandingAmount || 0);
+                    const creditLimit = Number(row.creditLimit || 0);
+                    const isBreach = creditLimit > 0 && outstanding > creditLimit;
                     return (
-                      <span className={`font-mono text-xs font-bold tabular-nums ${
-                        outstanding > 0 ? 'text-danger-700' : 'text-success-700'
-                      }`}>
-                        ₹{outstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
+                      <div className="text-right">
+                        <span className={`font-mono text-xs font-bold tabular-nums block ${
+                          outstanding > 0 ? 'text-danger-700' : 'text-success-700'
+                        }`}>
+                          ₹{outstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                        {isBreach && (
+                          <Badge variant="danger" size="sm" className="text-[9px] mt-0.5">
+                            Exceeded
+                          </Badge>
+                        )}
+                      </div>
                     );
                   }
                 },

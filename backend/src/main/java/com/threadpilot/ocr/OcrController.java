@@ -19,9 +19,10 @@ public class OcrController {
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER', 'ACCOUNTANT')")
     public ResponseEntity<ApiResponse<OcrService.OcrProcessingResult>> uploadAndProcess(
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "supplierId", required = false) UUID supplierId
     ) {
-        OcrService.OcrProcessingResult result = ocrService.uploadAndProcess(file);
+        OcrService.OcrProcessingResult result = ocrService.uploadAndProcess(file, supplierId);
         return ResponseEntity.ok(ApiResponse.success(result, "Invoice uploaded and processed"));
     }
 
@@ -41,4 +42,3 @@ public class OcrController {
         return ResponseEntity.ok(ApiResponse.success(invoice, "Invoice verified and committed"));
     }
 }
-

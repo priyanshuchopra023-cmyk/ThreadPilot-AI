@@ -14,7 +14,11 @@ import java.util.UUID;
 @Repository
 public interface SupplierRepository extends JpaRepository<Supplier, UUID> {
 
+    Optional<Supplier> findByGstNumberAndOrganizationId(String gstNumber, UUID organizationId);
+
     Optional<Supplier> findByGstNumber(String gstNumber);
+
+    Page<Supplier> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     @Query("SELECT s FROM Supplier s WHERE s.organization.id = :orgId AND s.status = 'ACTIVE'")
     Page<Supplier> findActiveByOrganizationId(@Param("orgId") UUID organizationId, Pageable pageable);
@@ -35,4 +39,3 @@ public interface SupplierRepository extends JpaRepository<Supplier, UUID> {
     @Query("SELECT SUM(s.outstandingAmount) FROM Supplier s WHERE s.organization.id = :orgId")
     java.math.BigDecimal getTotalOutstanding(@Param("orgId") UUID organizationId);
 }
-

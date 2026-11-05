@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/organizations")
 @RequiredArgsConstructor
@@ -21,9 +23,18 @@ public class OrganizationController {
         return ResponseEntity.ok(ApiResponse.success(org));
     }
 
+    @PutMapping("/current")
+    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Organization>> updateCurrent(@RequestBody Organization organization) {
+        Organization current = organizationService.getCurrentOrganization();
+        organization.setId(current.getId());
+        Organization updated = organizationService.update(organization);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Organization updated successfully"));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Organization>> getById(@PathVariable java.util.UUID id) {
+    public ResponseEntity<ApiResponse<Organization>> getById(@PathVariable UUID id) {
         Organization org = organizationService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(org));
     }
@@ -41,7 +52,7 @@ public class OrganizationController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Organization>> update(
-            @PathVariable java.util.UUID id,
+            @PathVariable UUID id,
             @RequestBody Organization organization
     ) {
         organization.setId(id);
@@ -49,4 +60,3 @@ public class OrganizationController {
         return ResponseEntity.ok(ApiResponse.success(updated, "Organization updated successfully"));
     }
 }
-

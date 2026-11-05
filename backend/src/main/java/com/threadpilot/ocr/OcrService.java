@@ -1,5 +1,8 @@
 package com.threadpilot.ocr;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.threadpilot.common.exception.BusinessException;
 import com.threadpilot.invoice.SupplierInvoice;
 import com.threadpilot.invoice.SupplierInvoiceItem;
@@ -21,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -36,13 +42,45 @@ public class OcrService {
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
+    private final ObjectMapper objectMapper;
 
-@Transactional
+    @Transactional
     public OcrProcessingResult uploadAndProcess(MultipartFile file) {
+        return uploadAndProcess(file, null);
+    }
+
+    @Transactional
+    public OcrProcessingResult uploadAndProcess(MultipartFile file, UUID supplierId) {
+        UUID orgId = TenantContext.requireTenantId();
+        Organization organization = new Organization();
+        organization.setId(orgId);
+
+        Supplier supplier = null;
+        if (supplierId != null) {
+            supplier = supplierRepository.findById(supplierId)
+                    .filter(s -> s.getOrganization().getId().equals(orgId))
+                    .orElse(null);
+        }
+
+        if (supplier == null) {
+            supplier = supplierRepository.findByOrganizationId(orgId, org.springframework.data.domain.PageRequest.of(0, 1))
+                    .stream().findFirst().orElse(null);
+        }
+
+        if (supplier == null) {
+            supplier = Supplier.builder()
+                    .name("Unassigned OCR Supplier")
+                    .status(com.threadpilot.supplier.SupplierStatus.ACTIVE)
+                    .organization(organization)
+                    .outstandingAmount(BigDecimal.ZERO)
+                    .build();
+            supplier = supplierRepository.save(supplier);
+        }
+
         // Store the file
         String fileUrl = storageService.store(file, "invoices/ocr");
 
-        // Create invoice in PROCESSING status
+        // Create invoice in PROCESSING status with required organization and supplier
         SupplierInvoice invoice = SupplierInvoice.builder()
                 .invoiceNumber("OCR-" + System.currentTimeMillis())
                 .invoiceDate(java.time.LocalDate.now())
@@ -50,6 +88,14 @@ public class OcrService {
                 .status(com.threadpilot.invoice.InvoiceStatus.PROCESSING)
                 .documentUrl(fileUrl)
                 .ocrStatus(com.threadpilot.invoice.OcrStatus.PROCESSING)
+                .organization(organization)
+                .supplier(supplier)
+                .subtotal(BigDecimal.ZERO)
+                .taxAmount(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .outstandingAmount(BigDecimal.ZERO)
                 .build();
         invoice = invoiceRepository.save(invoice);
 
@@ -60,7 +106,7 @@ public class OcrService {
         // Update invoice with OCR results
         invoice.setOcrStatus(result.isSuccess() ? com.threadpilot.invoice.OcrStatus.COMPLETED : com.threadpilot.invoice.OcrStatus.FAILED);
         invoice.setOcrConfidence(result.getConfidence());
-        invoice.setOcrRawData(toJson(result.getStructuredData()));
+        invoice.setOcrRawData(toJson(result));
         invoiceRepository.save(invoice);
 
         if (!result.isSuccess()) {
@@ -108,7 +154,7 @@ public class OcrService {
         // Update invoice with OCR results
         invoice.setOcrStatus(result.isSuccess() ? com.threadpilot.invoice.OcrStatus.COMPLETED : com.threadpilot.invoice.OcrStatus.FAILED);
         invoice.setOcrConfidence(result.getConfidence());
-        invoice.setOcrRawData(toJson(result.getStructuredData()));
+        invoice.setOcrRawData(toJson(result));
         invoiceRepository.save(invoice);
 
         if (!result.isSuccess()) {
@@ -152,7 +198,7 @@ public class OcrService {
         // Update invoice with OCR results
         invoice.setOcrStatus(result.isSuccess() ? com.threadpilot.invoice.OcrStatus.COMPLETED : com.threadpilot.invoice.OcrStatus.FAILED);
         invoice.setOcrConfidence(result.getConfidence());
-        invoice.setOcrRawData(toJson(result.getStructuredData()));
+        invoice.setOcrRawData(toJson(result));
         invoiceRepository.save(invoice);
 
         if (!result.isSuccess()) {
@@ -180,19 +226,72 @@ public class OcrService {
         SupplierInvoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new BusinessException("RESOURCE_NOT_FOUND", "Invoice not found"));
 
-        if (invoice.getOcrRawData() == null) {
+        UUID orgId = TenantContext.getOrganizationId();
+        if (orgId != null && invoice.getOrganization() != null && !invoice.getOrganization().getId().equals(orgId)) {
+            throw new BusinessException("ACCESS_DENIED", "Invoice not accessible");
+        }
+
+        if (invoice.getOcrRawData() == null || invoice.getOcrRawData().isBlank()) {
             throw new BusinessException("NO_OCR_DATA", "No OCR data available for this invoice");
         }
 
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(invoice.getOcrRawData(), OcrResult.class);
+            JsonNode rootNode = objectMapper.readTree(invoice.getOcrRawData());
+            if (rootNode.isTextual()) {
+                rootNode = objectMapper.readTree(rootNode.asText());
+            }
+
+            // Case 1: Full OcrResult structure (contains "structuredData" field)
+            if (rootNode.hasNonNull("structuredData")) {
+                OcrResult result = objectMapper.treeToValue(rootNode, OcrResult.class);
+                if (result.getConfidence() == null && invoice.getOcrConfidence() != null) {
+                    result.setConfidence(invoice.getOcrConfidence());
+                }
+                if (!result.isSuccess() && (invoice.getOcrStatus() == com.threadpilot.invoice.OcrStatus.COMPLETED ||
+                        invoice.getOcrStatus() == com.threadpilot.invoice.OcrStatus.VERIFIED)) {
+                    result.setSuccess(true);
+                }
+                return result;
+            }
+
+            // Case 2: Direct structured data map (legacy records)
+            Map<String, Object> structuredData = objectMapper.convertValue(
+                    rootNode,
+                    new TypeReference<Map<String, Object>>() {}
+            );
+
+            List<OcrResult.OcrLineItem> lineItems = null;
+            if (rootNode.has("lineItems") && rootNode.get("lineItems").isArray()) {
+                lineItems = objectMapper.convertValue(
+                        rootNode.get("lineItems"),
+                        new TypeReference<List<OcrResult.OcrLineItem>>() {}
+                );
+            } else if (structuredData != null && structuredData.get("lineItems") instanceof List<?> list && !list.isEmpty()) {
+                lineItems = objectMapper.convertValue(
+                        list,
+                        new TypeReference<List<OcrResult.OcrLineItem>>() {}
+                );
+            }
+
+            Double confidence = invoice.getOcrConfidence() != null ? invoice.getOcrConfidence() : 0.9;
+            boolean success = invoice.getOcrStatus() == com.threadpilot.invoice.OcrStatus.COMPLETED ||
+                              invoice.getOcrStatus() == com.threadpilot.invoice.OcrStatus.VERIFIED;
+            String rawText = rootNode.hasNonNull("rawText") ? rootNode.get("rawText").asText() : null;
+
+            return OcrResult.builder()
+                    .success(success)
+                    .confidence(confidence)
+                    .rawText(rawText)
+                    .structuredData(structuredData)
+                    .lineItems(lineItems)
+                    .build();
         } catch (Exception e) {
-            throw new BusinessException("PARSE_ERROR", "Failed to parse OCR data");
+            log.error("Failed to parse OCR data for invoice {}: {}", invoiceId, e.getMessage(), e);
+            throw new BusinessException("PARSE_ERROR", "Failed to parse OCR data: " + e.getMessage());
         }
     }
 
-@Transactional
+    @Transactional
     public SupplierInvoice verifyAndCommit(UUID invoiceId, SupplierInvoice verifiedInvoice) {
         SupplierInvoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new BusinessException("RESOURCE_NOT_FOUND", "Invoice not found"));
@@ -212,14 +311,15 @@ public class OcrService {
                 .filter(s -> s.getOrganization().getId().equals(orgId))
                 .orElseThrow(() -> new BusinessException("VALIDATION_ERROR", "Supplier not found or not accessible"));
 
-        // Update invoice with verified data
+        // Update invoice with verified data - note: keep status as DRAFT/PROCESSING so verify() can perform the transition
         invoice.setInvoiceNumber(verifiedInvoice.getInvoiceNumber());
         invoice.setInvoiceDate(verifiedInvoice.getInvoiceDate());
         invoice.setDueDate(verifiedInvoice.getDueDate());
         invoice.setSupplier(supplier);
         invoice.setNotes(verifiedInvoice.getNotes());
-        invoice.setDocumentUrl(verifiedInvoice.getDocumentUrl());
-        invoice.setStatus(com.threadpilot.invoice.InvoiceStatus.VERIFIED);
+        if (verifiedInvoice.getDocumentUrl() != null && !verifiedInvoice.getDocumentUrl().isBlank()) {
+            invoice.setDocumentUrl(verifiedInvoice.getDocumentUrl());
+        }
         invoice.setOcrStatus(com.threadpilot.invoice.OcrStatus.VERIFIED);
 
         // Handle items - create new items from verified invoice
@@ -264,14 +364,15 @@ public class OcrService {
         // Recalculate totals
         invoiceService.recalculateInvoiceTotals(invoice);
 
-        // The invoice service will handle inventory updates when verified
+        // The invoice service will handle inventory updates and supplier balance when verified
         return invoiceService.verify(invoice.getId());
     }
 
     private String toJson(Object obj) {
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+            return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
+            log.error("Failed to serialize object to JSON: {}", e.getMessage(), e);
             return "{}";
         }
     }
@@ -284,4 +385,3 @@ public class OcrService {
         private String documentUrl;
     }
 }
-

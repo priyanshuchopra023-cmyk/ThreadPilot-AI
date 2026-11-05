@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
+    Optional<Customer> findByGstNumberAndOrganizationId(String gstNumber, UUID organizationId);
+
     Optional<Customer> findByGstNumber(String gstNumber);
 
     @Query("SELECT c FROM Customer c WHERE c.organization.id = :orgId AND c.status = 'ACTIVE'")
@@ -44,4 +46,3 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     @Query("SELECT COUNT(c) FROM Customer c WHERE c.organization.id = :orgId AND c.status = 'ACTIVE'")
     long countActiveByOrganizationId(@Param("orgId") UUID organizationId);
 }
-

@@ -25,6 +25,10 @@ import { Button } from '../components/ui/Button';
 import { DataTable } from '../components/tables/DataTable';
 import { dashboardApi, analyticsApi } from '../api/endpoints';
 import { ThreadAICore } from '../components/brand/ThreadAICore';
+import { DailyActionCenterCard } from '../components/intelligence/DailyActionCenterCard';
+import { ReceivablesAgingCard } from '../components/intelligence/ReceivablesAgingCard';
+import { CustomerCreditCard } from '../components/intelligence/CustomerCreditCard';
+import { TextileIntelligenceCard } from '../components/intelligence/TextileIntelligenceCard';
 import type { DashboardStats, RecentSale, RecentOrder, LowStockProduct, BusinessAlert } from '../types';
 
 interface DashboardMetrics {
@@ -412,7 +416,7 @@ const OverdueInvoicesCard: React.FC = () => {
             columns={[
               { key: 'invoiceNumber', header: 'Invoice #', width: '140px', render: (row) => <span className="font-mono text-xs font-semibold text-navy-900">{row.invoiceNumber}</span> },
               { key: 'dueDate', header: 'Due Date', width: '120px', render: (row) => <span className="font-mono text-xs text-danger-600 font-semibold">{new Date(row.dueDate).toLocaleDateString()}</span> },
-              { key: 'supplierId', header: 'Supplier', width: '120px', render: (row) => <span className="font-mono text-xs text-navy-500">{row.supplierId.slice(0, 8)}...</span> },
+              { key: 'supplierId', header: 'Supplier', width: '120px', render: (row) => <span className="font-mono text-xs text-navy-500">{row.supplier?.name || (row.supplierId ? `${row.supplierId.slice(0, 8)}...` : row.supplier?.id ? `${row.supplier.id.slice(0, 8)}...` : '—')}</span> },
               { key: 'outstandingAmount', header: 'Outstanding', align: 'right', width: '130px', render: (row) => <span className="font-mono text-xs font-bold text-danger-700 tabular-nums">₹{Number(row.outstandingAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> },
             ]}
             keyExtractor={(row) => row.id}
@@ -486,7 +490,7 @@ const UpcomingDueInvoicesCard: React.FC = () => {
             columns={[
               { key: 'invoiceNumber', header: 'Invoice #', width: '140px', render: (row) => <span className="font-mono text-xs font-semibold text-navy-900">{row.invoiceNumber}</span> },
               { key: 'dueDate', header: 'Due Date', width: '120px', render: (row) => <span className="font-mono text-xs text-navy-600">{new Date(row.dueDate).toLocaleDateString()}</span> },
-              { key: 'supplierId', header: 'Supplier', width: '120px', render: (row) => <span className="font-mono text-xs text-navy-500">{row.supplierId.slice(0, 8)}...</span> },
+              { key: 'supplierId', header: 'Supplier', width: '120px', render: (row) => <span className="font-mono text-xs text-navy-500">{row.supplier?.name || (row.supplierId ? `${row.supplierId.slice(0, 8)}...` : row.supplier?.id ? `${row.supplier.id.slice(0, 8)}...` : '—')}</span> },
               { key: 'outstandingAmount', header: 'Amount', align: 'right', width: '130px', render: (row) => <span className="font-mono text-xs font-bold text-navy-900 tabular-nums">₹{Number(row.outstandingAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> },
             ]}
             keyExtractor={(row) => row.id}
@@ -1066,6 +1070,18 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-1">
           <BusinessHealthCard />
         </div>
+      </div>
+
+      {/* Business Brain: Daily Actions & Customer Credit Cadence */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DailyActionCenterCard />
+        <CustomerCreditCard />
+      </div>
+
+      {/* Financial & Supply Intelligence: Receivables Aging & Textile Inventory Velocity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ReceivablesAgingCard />
+        <TextileIntelligenceCard />
       </div>
 
       {/* Recent Activity: Sales & Orders */}

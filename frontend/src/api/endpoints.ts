@@ -141,6 +141,16 @@ export const invoiceApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  uploadOcrDirect: (file: File, supplierId?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (supplierId) {
+      formData.append('supplierId', supplierId);
+    }
+    return api.post<any>('/ocr/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   processOcr: (id: string) => api.post(`/invoices/${id}/ocr`),
   reprocessOcr: (id: string) => api.post(`/invoices/${id}/ocr`),
   getOcrResult: (id: string) => api.get<any>(`/invoices/${id}/ocr-result`),
@@ -201,4 +211,12 @@ export const analyticsApi = {
   getSalesByCategory: () => api.get<any[]>(`/analytics/sales-by-category`),
   getBusinessHealth: () => api.get<any>(`/analytics/business-health`),
   getDashboardMetrics: () => api.get<any>(`/analytics/dashboard`),
+  getReceivablesAging: () => api.get<any>(`/analytics/receivables-aging`),
+  getCustomerCreditIntelligence: () => api.get<any[]>(`/analytics/customer-credit-intelligence`),
+  getActionCenter: () => api.get<any[]>(`/analytics/action-center`),
+  getTextileProductIntelligence: () => api.get<any[]>(`/analytics/textile-product-intelligence`),
+};
+
+export const searchApi = {
+  search: (q: string) => api.get<any>('/search', { params: { q } }),
 };

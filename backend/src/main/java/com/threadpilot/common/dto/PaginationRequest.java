@@ -23,10 +23,14 @@ public class PaginationRequest {
     private String sortBy;
     private String sortDir;
 
-    // Invoice-specific filters
+    // Filters
     private String status;
     private String ocrStatus;
     private String supplierId;
+    private String category;
+    private String startDate;
+    private String endDate;
+    private String search;
 
     public org.springframework.data.domain.Pageable toPageable() {
         org.springframework.data.domain.Sort.Direction direction = "desc".equalsIgnoreCase(sortDir)
@@ -37,4 +41,3 @@ public class PaginationRequest {
         return org.springframework.data.domain.PageRequest.of(pageIndex, size, sort);
     }
 }
-

@@ -9,6 +9,7 @@ import com.threadpilot.event.EventSeverity;
 import com.threadpilot.inventory.Inventory;
 import com.threadpilot.inventory.InventoryRepository;
 import com.threadpilot.organization.Organization;
+import com.threadpilot.organization.OrganizationRepository;
 import com.threadpilot.security.TenantContext;
 import com.threadpilot.supplier.Supplier;
 import com.threadpilot.supplier.SupplierRepository;
@@ -45,8 +46,9 @@ public class AlertService {
     private final CustomerOrderRepository orderRepository;
     private final UserRepository userRepository;
     private final BusinessEventRepository businessEventRepository;
+    private final OrganizationRepository organizationRepository;
 
-@Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public PageResponse<Alert> getAll(PaginationRequest request) {
         UUID orgId = TenantContext.requireTenantId();
         var page = alertRepository.findByOrganizationId(orgId, request.toPageable());
@@ -147,11 +149,32 @@ public class AlertService {
         return unread.size();
     }
 
-    // Scheduled alert generation
+    // Scheduled alert generation for all active organizations safely without relying on request tenant context
     @Scheduled(cron = "0 0 6 * * ?") // Daily at 6 AM
-    @Transactional
     public void generateDailyAlerts() {
+        List<Organization> activeOrgs = organizationRepository.findAllActive();
+        log.info("Generating daily alerts for {} active organizations", activeOrgs.size());
+
+        for (Organization org : activeOrgs) {
+            try {
+                TenantContext.setOrganizationId(org.getId());
+                generateDailyAlertsForOrg(org.getId());
+            } catch (Exception e) {
+                log.error("Failed to generate daily alerts for organization: {}", org.getId(), e);
+            } finally {
+                TenantContext.clear();
+            }
+        }
+    }
+
+    @Transactional
+    public void generateAlertsForCurrentOrg() {
         UUID orgId = TenantContext.requireTenantId();
+        generateDailyAlertsForOrg(orgId);
+    }
+
+    @Transactional
+    public void generateDailyAlertsForOrg(UUID orgId) {
         log.info("Generating daily alerts for organization: {}", orgId);
 
         // Low stock alerts
@@ -293,7 +316,7 @@ public class AlertService {
     }
 
     private void generateSlowMovingAlerts(UUID orgId) {
-        // This would be more sophisticated in production
+        // Find slow moving inventory
         List<Inventory> slowMoving = inventoryRepository.findWithStock(orgId).stream()
                 .filter(i -> i.getCurrentQuantity() > 100 && i.getLastMovementAt() != null
                         && i.getLastMovementAt().isBefore(Instant.now().minusSeconds(90 * 24 * 60 * 60)))
@@ -328,4 +351,3 @@ public class AlertService {
                 .anyMatch(a -> a.getAlertType() == alertType && a.getStatus() != AlertStatus.RESOLVED && a.getStatus() != AlertStatus.DISMISSED);
     }
 }
-

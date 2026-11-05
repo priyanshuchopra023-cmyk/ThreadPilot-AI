@@ -27,6 +27,15 @@ public class ExpenseController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<List<ExpenseSummary>>> getSummary(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate
+    ) {
+        List<ExpenseSummary> summary = expenseService.getExpensesSummary(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
     @GetMapping("/category/{category}")
     public ResponseEntity<ApiResponse<PageResponse<Expense>>> getByCategory(
             @PathVariable ExpenseCategory category,
@@ -107,4 +116,3 @@ public class ExpenseController {
         return ResponseEntity.ok(ApiResponse.success(null, "Expense deleted successfully"));
     }
 }
-

@@ -1,10 +1,11 @@
 package com.threadpilot.storage;
 
 import com.threadpilot.common.dto.ApiResponse;
+import com.threadpilot.common.exception.ResourceNotFoundException;
 import com.threadpilot.invoice.SupplierInvoice;
 import com.threadpilot.invoice.SupplierInvoiceRepository;
-import com.threadpilot.organization.Organization;
 import com.threadpilot.security.TenantContext;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -15,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,12 +37,44 @@ public class StorageController {
         return ResponseEntity.ok(ApiResponse.success(path, "File uploaded successfully"));
     }
 
-    @GetMapping("/files/{path:.+}")
-    public ResponseEntity<Resource> download(@PathVariable String path) {
+    @GetMapping("/invoice/{invoiceId}")
+    public ResponseEntity<Resource> getInvoiceDocument(@PathVariable UUID invoiceId) {
         UUID orgId = TenantContext.requireTenantId();
+        SupplierInvoice invoice = invoiceRepository.findById(invoiceId)
+                .filter(i -> i.getOrganization().getId().equals(orgId))
+                .orElseThrow(() -> new ResourceNotFoundException("SupplierInvoice", invoiceId));
+
+        if (invoice.getDocumentUrl() == null || invoice.getDocumentUrl().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] data;
+        try {
+            data = storageService.retrieve(invoice.getDocumentUrl());
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ByteArrayResource resource = new ByteArrayResource(data);
+        String contentType = guessContentType(invoice.getDocumentUrl());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + getFilename(invoice.getDocumentUrl()) + "\"")
+                .body(resource);
+    }
+
+    @GetMapping("/files/**")
+    public ResponseEntity<Resource> download(HttpServletRequest request) {
+        UUID orgId = TenantContext.requireTenantId();
+        String uri = request.getRequestURI();
+        int filesIdx = uri.indexOf("/storage/files/");
+        if (filesIdx < 0) {
+            return ResponseEntity.notFound().build();
+        }
+        String path = uri.substring(filesIdx + "/storage/files/".length());
 
         // Verify the file belongs to an invoice in the current organization
-        // Path format: invoices/ocr/yyyy/MM/dd/uuid.ext
         Optional<SupplierInvoice> invoiceOpt = invoiceRepository.findByDocumentUrlAndOrganizationId(path, orgId);
         if (invoiceOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -64,10 +96,17 @@ public class StorageController {
                 .body(resource);
     }
 
-    @DeleteMapping("/files/{path:.+}")
+    @DeleteMapping("/files/**")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String path) {
+    public ResponseEntity<ApiResponse<Void>> delete(HttpServletRequest request) {
         UUID orgId = TenantContext.requireTenantId();
+        String uri = request.getRequestURI();
+        int filesIdx = uri.indexOf("/storage/files/");
+        if (filesIdx < 0) {
+            return ResponseEntity.notFound().build();
+        }
+        String path = uri.substring(filesIdx + "/storage/files/".length());
+
         Optional<SupplierInvoice> invoiceOpt = invoiceRepository.findByDocumentUrlAndOrganizationId(path, orgId);
         if (invoiceOpt.isEmpty()) {
             return ResponseEntity.notFound().build();

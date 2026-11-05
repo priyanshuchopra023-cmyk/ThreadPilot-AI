@@ -24,7 +24,7 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
     private final SaleRepository saleRepository;
 
-@GetMapping("/health-score")
+    @GetMapping("/health-score")
     public ResponseEntity<ApiResponse<AnalyticsService.BusinessHealthScore>> getBusinessHealthScore() {
         AnalyticsService.BusinessHealthScore score = analyticsService.getBusinessHealthScore();
         return ResponseEntity.ok(ApiResponse.success(score));
@@ -89,7 +89,7 @@ public class AnalyticsController {
         return ResponseEntity.ok(ApiResponse.success(profit));
     }
 
-@GetMapping("/expenses")
+    @GetMapping("/expenses")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalExpenses(
             @RequestParam LocalDate start,
             @RequestParam LocalDate end
@@ -170,6 +170,30 @@ public class AnalyticsController {
         return ResponseEntity.ok(ApiResponse.success(salesByCategory));
     }
 
+    @GetMapping("/receivables-aging")
+    public ResponseEntity<ApiResponse<AnalyticsService.ReceivablesAging>> getReceivablesAging() {
+        AnalyticsService.ReceivablesAging aging = analyticsService.getReceivablesAging();
+        return ResponseEntity.ok(ApiResponse.success(aging));
+    }
+
+    @GetMapping("/customer-credit-intelligence")
+    public ResponseEntity<ApiResponse<List<AnalyticsService.CustomerIntelligence>>> getCustomerCreditIntelligence() {
+        List<AnalyticsService.CustomerIntelligence> intel = analyticsService.getCustomerCreditIntelligence();
+        return ResponseEntity.ok(ApiResponse.success(intel));
+    }
+
+    @GetMapping("/action-center")
+    public ResponseEntity<ApiResponse<List<AnalyticsService.ActionItem>>> getDailyActionCenter() {
+        List<AnalyticsService.ActionItem> actions = analyticsService.getDailyActionCenter();
+        return ResponseEntity.ok(ApiResponse.success(actions));
+    }
+
+    @GetMapping("/textile-product-intelligence")
+    public ResponseEntity<ApiResponse<List<AnalyticsService.TextileProductIntelligence>>> getTextileProductIntelligence() {
+        List<AnalyticsService.TextileProductIntelligence> intel = analyticsService.getTextileProductIntelligence();
+        return ResponseEntity.ok(ApiResponse.success(intel));
+    }
+
     @lombok.Builder
     @lombok.Data
     public static class RevenueTrendPoint {
@@ -177,4 +201,3 @@ public class AnalyticsController {
         private double revenue;
     }
 }
-

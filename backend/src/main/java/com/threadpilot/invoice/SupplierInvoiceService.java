@@ -53,7 +53,7 @@ public class SupplierInvoiceService {
     private final UserRepository userRepository;
     private final BusinessEventRepository businessEventRepository;
 
-@Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public PageResponse<SupplierInvoice> getAll(PaginationRequest request) {
         UUID orgId = TenantContext.requireTenantId();
         InvoiceStatus invoiceStatus = null;
@@ -147,10 +147,39 @@ public class SupplierInvoiceService {
         invoice.setPaidAmount(BigDecimal.ZERO);
         invoice.setOutstandingAmount(BigDecimal.ZERO);
 
-        return invoiceRepository.save(invoice);
+        java.util.Set<SupplierInvoiceItem> initialItems = invoice.getItems();
+        invoice.setItems(new java.util.HashSet<>());
+
+        SupplierInvoice saved = invoiceRepository.save(invoice);
+
+        if (initialItems != null && !initialItems.isEmpty()) {
+            for (SupplierInvoiceItem item : initialItems) {
+                item.setInvoice(saved);
+                item.setOrganization(organization);
+                if (item.getProduct() != null && item.getProduct().getId() != null) {
+                    Product product = productRepository.findById(item.getProduct().getId())
+                            .filter(p -> p.getOrganization().getId().equals(orgId))
+                            .orElse(null);
+                    item.setProduct(product);
+                }
+                if (item.getVariant() != null && item.getVariant().getId() != null) {
+                    ProductVariant variant = variantRepository.findById(item.getVariant().getId())
+                            .filter(v -> v.getOrganization().getId().equals(orgId))
+                            .orElse(null);
+                    item.setVariant(variant);
+                }
+                item.calculateLineTotal();
+                itemRepository.save(item);
+                saved.getItems().add(item);
+            }
+            recalculateInvoiceTotals(saved);
+            saved = invoiceRepository.save(saved);
+        }
+
+        return saved;
     }
 
-@Transactional
+    @Transactional
     public SupplierInvoice addItem(UUID invoiceId, SupplierInvoiceItem item) {
         final UUID orgId = TenantContext.requireTenantId();
         final UUID capturedOrgId = orgId;
@@ -190,19 +219,14 @@ public class SupplierInvoiceService {
         return invoiceRepository.save(invoice);
     }
 
-@Transactional
+    @Transactional
     public SupplierInvoice verify(UUID invoiceId) {
         UUID orgId = TenantContext.requireTenantId();
         UUID userId = TenantContext.getUserId();
 
-        // Use pessimistic locking to prevent concurrent verification
-        SupplierInvoice invoice = invoiceRepository.findByIdWithLock(invoiceId)
+        // Use pessimistic locking scoped to tenant to prevent concurrent verification and cross-tenant leakage
+        SupplierInvoice invoice = invoiceRepository.findByIdAndOrganizationIdWithLock(invoiceId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("SupplierInvoice", invoiceId));
-
-        // Re-verify the invoice belongs to the current organization (double-check after lock)
-        if (!invoice.getOrganization().getId().equals(orgId)) {
-            throw new ResourceNotFoundException("SupplierInvoice", invoiceId);
-        }
 
         if (invoice.getStatus() == InvoiceStatus.VERIFIED || invoice.getStatus() == InvoiceStatus.PAID) {
             throw new BusinessException("INVALID_STATE", "Invoice is already verified or paid");
@@ -291,27 +315,40 @@ public class SupplierInvoiceService {
     }
 
     public void recalculateInvoiceTotals(SupplierInvoice invoice) {
-        BigDecimal subtotal = invoice.getItems().stream()
-                .map(SupplierInvoiceItem::getLineTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (invoice.getItems() == null || invoice.getItems().isEmpty()) {
+            invoice.setSubtotal(BigDecimal.ZERO);
+            invoice.setTaxAmount(BigDecimal.ZERO);
+            invoice.setDiscountAmount(BigDecimal.ZERO);
+            invoice.setTotalAmount(BigDecimal.ZERO);
+            BigDecimal paid = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
+            invoice.setOutstandingAmount(BigDecimal.ZERO.subtract(paid).max(BigDecimal.ZERO));
+            return;
+        }
 
-        BigDecimal taxAmount = invoice.getItems().stream()
-                .map(item -> item.getLineTotal().subtract(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).subtract(
-                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).multiply(item.getDiscountRate().divide(BigDecimal.valueOf(100)))
-                )).multiply(item.getTaxRate().divide(BigDecimal.valueOf(100))))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal subtotal = invoice.getItems().stream()
+                .map(SupplierInvoiceItem::getBaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
 
         BigDecimal discountAmount = invoice.getItems().stream()
-                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).multiply(item.getDiscountRate().divide(BigDecimal.valueOf(100))))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(SupplierInvoiceItem::getDiscountAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
 
-        BigDecimal totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
+        BigDecimal taxAmount = invoice.getItems().stream()
+                .map(SupplierInvoiceItem::getTaxAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+
+        BigDecimal totalAmount = subtotal.subtract(discountAmount).add(taxAmount).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal paidAmount = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal outstanding = totalAmount.subtract(paidAmount).setScale(2, java.math.RoundingMode.HALF_UP);
 
         invoice.setSubtotal(subtotal);
         invoice.setTaxAmount(taxAmount);
         invoice.setDiscountAmount(discountAmount);
         invoice.setTotalAmount(totalAmount);
-        invoice.setOutstandingAmount(totalAmount.subtract(invoice.getPaidAmount()));
+        invoice.setOutstandingAmount(outstanding.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : outstanding);
     }
 
     private void createBusinessEvent(SupplierInvoice invoice, EventType eventType, String description) {
@@ -329,4 +366,3 @@ public class SupplierInvoiceService {
         businessEventRepository.save(event);
     }
 }
-

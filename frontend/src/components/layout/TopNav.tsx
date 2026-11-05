@@ -10,11 +10,13 @@ import {
   Check,
   Loader2,
   Sparkles,
+  Search,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { alertApi } from '../../api/endpoints';
+import { alertApi, searchApi } from '../../api/endpoints';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface TopNavProps {
@@ -37,6 +39,61 @@ export const TopNav: React.FC<TopNavProps> = ({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{
+    products?: any[];
+    variants?: any[];
+    customers?: any[];
+    suppliers?: any[];
+    orders?: any[];
+    invoices?: any[];
+    sales?: any[];
+    total?: number;
+  } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        if (searchQuery.trim().length >= 2) {
+          setShowSearchDropdown(true);
+        }
+      } else if (e.key === 'Escape') {
+        setShowSearchDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await searchApi.search(searchQuery.trim());
+        setSearchResults(res.data);
+        setShowSearchDropdown(true);
+      } catch (err) {
+        console.error('Search failed', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const { data: unreadCount } = useQuery({
     queryKey: ['alerts-unread-count'],
@@ -122,6 +179,9 @@ export const TopNav: React.FC<TopNavProps> = ({
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -161,6 +221,171 @@ export const TopNav: React.FC<TopNavProps> = ({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Global Search Bar */}
+        <div className="relative flex-1 max-w-md mx-4 hidden md:block" ref={searchRef}>
+          <div className="relative">
+            <Search className="w-4 h-4 text-secondary-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (searchQuery.trim().length >= 2) setShowSearchDropdown(true);
+              }}
+              placeholder="Search products, orders, customers, invoices... (Press /)"
+              className="w-full pl-9 pr-8 py-1.5 text-xs bg-secondary-50 hover:bg-secondary-100/70 focus:bg-white text-secondary-900 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-secondary-400"
+            />
+            {isSearching ? (
+              <Loader2 className="w-3.5 h-3.5 text-secondary-400 absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin" />
+            ) : searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchResults(null);
+                  setShowSearchDropdown(false);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Results Dropdown */}
+          {showSearchDropdown && searchResults && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-xl border border-secondary-200/90 py-2 z-50 max-h-96 overflow-y-auto divide-y divide-secondary-100">
+              {searchResults.total === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-secondary-500">
+                  No records found for "{searchQuery}"
+                </div>
+              ) : (
+                <>
+                  {searchResults.products && searchResults.products.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Products</div>
+                      {searchResults.products.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/products');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.customers && searchResults.customers.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Customers</div>
+                      {searchResults.customers.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/customers');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.orders && searchResults.orders.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Orders</div>
+                      {searchResults.orders.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/orders');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900 font-mono">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.invoices && searchResults.invoices.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Supplier Invoices</div>
+                      {searchResults.invoices.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/invoices');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900 font-mono">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.suppliers && searchResults.suppliers.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Suppliers</div>
+                      {searchResults.suppliers.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/suppliers');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.sales && searchResults.sales.length > 0 && (
+                    <div className="py-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-400">Sales</div>
+                      {searchResults.sales.map((item: any) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate('/sales');
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-secondary-50 flex flex-col"
+                        >
+                          <span className="text-xs font-medium text-navy-900 font-mono">{item.title}</span>
+                          <span className="text-[10px] text-secondary-500">{item.subtitle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5">

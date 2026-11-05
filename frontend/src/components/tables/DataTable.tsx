@@ -257,9 +257,14 @@ export function DataTable<T>({
             ) : (
               paginatedData.map((row) => {
                 const cells = columns.map((col) => {
-                  const cellValue = col.render
-                    ? col.render(row)
-                    : (((row as Record<string, unknown>)[col.key]?.toString()) ?? '—');
+                  let cellValue: React.ReactNode;
+                  try {
+                    cellValue = col.render
+                      ? col.render(row)
+                      : (((row as Record<string, unknown>)[col.key]?.toString()) ?? '—');
+                  } catch {
+                    cellValue = '—';
+                  }
                   return (
                     <td
                       key={col.key}

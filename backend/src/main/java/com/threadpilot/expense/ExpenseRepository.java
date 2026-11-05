@@ -32,5 +32,20 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     @Query("SELECT NEW com.threadpilot.analytics.dto.ExpenseSummary(e.category, SUM(e.amount), COUNT(e)) " +
             "FROM Expense e WHERE e.organization.id = :orgId AND e.expenseDate BETWEEN :start AND :end GROUP BY e.category ORDER BY SUM(e.amount) DESC")
     List<com.threadpilot.analytics.dto.ExpenseSummary> getExpensesByCategory(@Param("orgId") UUID organizationId, @Param("start") LocalDate start, @Param("end") LocalDate end);
-}
 
+    @Query("SELECT NEW com.threadpilot.analytics.dto.ExpenseSummary(e.category, SUM(e.amount), COUNT(e)) " +
+            "FROM Expense e WHERE e.organization.id = :orgId GROUP BY e.category ORDER BY SUM(e.amount) DESC")
+    List<com.threadpilot.analytics.dto.ExpenseSummary> getExpensesByCategoryAllTime(@Param("orgId") UUID organizationId);
+
+    @Query("SELECT e FROM Expense e WHERE e.organization.id = :orgId " +
+           "AND (:category IS NULL OR e.category = :category) " +
+           "AND (cast(:startDate as date) IS NULL OR e.expenseDate >= :startDate) " +
+           "AND (cast(:endDate as date) IS NULL OR e.expenseDate <= :endDate) " +
+           "ORDER BY e.expenseDate DESC")
+    Page<Expense> findWithFilters(
+            @Param("orgId") UUID organizationId,
+            @Param("category") ExpenseCategory category,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable);
+}

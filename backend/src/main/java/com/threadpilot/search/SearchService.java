@@ -154,6 +154,25 @@ public class SearchService {
                         .build())
                 .toList());
 
+        // Search payments
+        List<Payment> payments = paymentRepository.findByOrganizationId(orgId, org.springframework.data.domain.PageRequest.of(0, 15)).getContent().stream()
+                .filter(p -> (p.getPaymentNumber() != null && p.getPaymentNumber().toLowerCase().contains(term)) ||
+                        (p.getReferenceNumber() != null && p.getReferenceNumber().toLowerCase().contains(term)) ||
+                        (p.getCustomer() != null && p.getCustomer().getName().toLowerCase().contains(term)) ||
+                        (p.getSupplier() != null && p.getSupplier().getName().toLowerCase().contains(term)))
+                .limit(10)
+                .toList();
+        results.addAll(payments.stream()
+                .map(p -> SearchResult.builder()
+                        .type("PAYMENT")
+                        .id(p.getId())
+                        .title(p.getPaymentNumber() + " (₹" + p.getAmount() + ")")
+                        .subtitle((p.getCustomer() != null ? p.getCustomer().getName() : (p.getSupplier() != null ? p.getSupplier().getName() : "General")) +
+                                " | " + p.getPaymentMethod() + (p.getReferenceNumber() != null ? " | Ref: " + p.getReferenceNumber() : ""))
+                        .url("/payments")
+                        .build())
+                .toList());
+
         // Group by type
         SearchResults grouped = new SearchResults();
         grouped.setProducts(results.stream().filter(r -> r.getType().equals("PRODUCT")).toList());
@@ -163,6 +182,7 @@ public class SearchService {
         grouped.setOrders(results.stream().filter(r -> r.getType().equals("ORDER")).toList());
         grouped.setInvoices(results.stream().filter(r -> r.getType().equals("INVOICE")).toList());
         grouped.setSales(results.stream().filter(r -> r.getType().equals("SALE")).toList());
+        grouped.setPayments(results.stream().filter(r -> r.getType().equals("PAYMENT")).toList());
         grouped.setTotal(results.size());
 
         return grouped;
@@ -182,11 +202,13 @@ public class SearchService {
     public static class SearchResults {
         private List<SearchResult> products = new ArrayList<>();
         private List<SearchResult> variants = new ArrayList<>();
+        private List<CustomerOrder> customerOrders = new ArrayList<>();
         private List<SearchResult> customers = new ArrayList<>();
         private List<SearchResult> suppliers = new ArrayList<>();
         private List<SearchResult> orders = new ArrayList<>();
         private List<SearchResult> invoices = new ArrayList<>();
         private List<SearchResult> sales = new ArrayList<>();
+        private List<SearchResult> payments = new ArrayList<>();
         private int total;
 
         public static SearchResults empty() {

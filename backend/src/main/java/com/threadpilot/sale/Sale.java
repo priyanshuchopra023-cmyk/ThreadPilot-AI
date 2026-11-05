@@ -120,19 +120,23 @@ public class Sale extends BaseEntity {
             return;
         }
         this.subtotal = items.stream()
-                .map(SaleItem::getLineTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.taxAmount = items.stream()
-                .map(SaleItem::getTaxAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(SaleItem::getBaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
         this.discountAmount = items.stream()
                 .map(SaleItem::getDiscountAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.totalAmount = subtotal.add(taxAmount).subtract(discountAmount);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        this.taxAmount = items.stream()
+                .map(SaleItem::getTaxAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        this.totalAmount = subtotal.subtract(discountAmount).add(taxAmount).setScale(2, java.math.RoundingMode.HALF_UP);
         this.costAmount = items.stream()
                 .map(SaleItem::getCostAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.grossProfit = totalAmount.subtract(costAmount);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        this.grossProfit = totalAmount.subtract(costAmount).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     public BigDecimal getGrossMarginPercent() {

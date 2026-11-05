@@ -4,6 +4,7 @@ import com.threadpilot.ai.AIProvider;
 import com.threadpilot.ai.AIProviderFactory;
 import com.threadpilot.ai.AIToolResult;
 import com.threadpilot.ai.BusinessContextService;
+import com.threadpilot.analytics.AnalyticsService;
 import com.threadpilot.common.exception.BusinessException;
 import com.threadpilot.security.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,7 @@ public class CopilotService {
 
     private final AIProviderFactory aiProviderFactory;
     private final BusinessContextService businessContextService;
+    private final AnalyticsService analyticsService;
     private final AIConversationRepository conversationRepository;
     private final AIMessageRepository messageRepository;
     private final ObjectMapper objectMapper;
@@ -173,6 +175,21 @@ private void saveMessage(AIConversation conversation, String role, String conten
         if (lower.contains("cash flow") || lower.contains("cash position")) {
             calls.add(new ToolCall("getCashFlow", Map.of()));
         }
+        if (lower.contains("aging") || lower.contains("due date") || lower.contains("receivables aging")) {
+            calls.add(new ToolCall("getReceivablesAging", Map.of()));
+        }
+        if (lower.contains("credit") || lower.contains("breach") || lower.contains("intelligence") || lower.contains("segment") || lower.contains("reactivat")) {
+            calls.add(new ToolCall("getCustomerCreditIntelligence", Map.of()));
+        }
+        if (lower.contains("action") || lower.contains("task") || lower.contains("priority") || lower.contains("today") || lower.contains("to-do")) {
+            calls.add(new ToolCall("getDailyActionCenter", Map.of()));
+        }
+        if (lower.contains("textile") || lower.contains("hosiery") || lower.contains("yarn") || lower.contains("velocity") || lower.contains("trend") || lower.contains("deadstock")) {
+            calls.add(new ToolCall("getTextileProductIntelligence", Map.of()));
+        }
+        if (lower.contains("draft") || lower.contains("reminder") || lower.contains("follow up") || lower.contains("whatsapp") || lower.contains("email payment")) {
+            calls.add(new ToolCall("draftFollowupMessage", Map.of()));
+        }
 
         return calls;
     }
@@ -186,7 +203,7 @@ private void saveMessage(AIConversation conversation, String role, String conten
                                     "sku", i.getProduct() != null ? i.getProduct().getSku() : i.getVariant().getSku(),
                                     "available", i.getAvailableQuantity(),
                                     "minLevel", i.getProduct() != null ? i.getProduct().getMinStockLevel() : i.getVariant().getMinStockLevel()
-                            ))
+                             ))
                             .toList(), null);
             case "getOutOfStockProducts" -> new ToolResult(toolCall.getName(), true,
                     context.getOutOfStockProducts().stream()
@@ -260,6 +277,34 @@ private void saveMessage(AIConversation conversation, String role, String conten
                             "payables", context.getTotalPayables(),
                             "netPosition", context.getTotalReceivables().subtract(context.getTotalPayables())
                     ), null);
+            case "getReceivablesAging" -> new ToolResult(toolCall.getName(), true,
+                    analyticsService.getReceivablesAging(), null);
+            case "getCustomerCreditIntelligence" -> new ToolResult(toolCall.getName(), true,
+                    analyticsService.getCustomerCreditIntelligence(), null);
+            case "getDailyActionCenter" -> new ToolResult(toolCall.getName(), true,
+                    analyticsService.getDailyActionCenter(), null);
+            case "getTextileProductIntelligence" -> new ToolResult(toolCall.getName(), true,
+                    analyticsService.getTextileProductIntelligence(), null);
+            case "draftFollowupMessage" -> {
+                List<AnalyticsService.CustomerIntelligence> intel = analyticsService.getCustomerCreditIntelligence();
+                var candidate = intel.stream()
+                        .filter(c -> "CREDIT_LIMIT_BREACHED".equals(c.getSegment()) || "HIGH_SALES_POOR_COLLECTION".equals(c.getSegment()) || c.getOutstandingBalance().compareTo(BigDecimal.ZERO) > 0)
+                        .findFirst()
+                        .orElse(null);
+
+                String custName = candidate != null ? candidate.getCustomerName() : "Valued Customer";
+                BigDecimal bal = candidate != null ? candidate.getOutstandingBalance() : BigDecimal.ZERO;
+
+                Map<String, Object> draftResult = Map.of(
+                        "channel", "WhatsApp/Email",
+                        "customerName", custName,
+                        "outstandingBalance", bal,
+                        "requiresHumanApproval", true,
+                        "disclaimer", "Non-consequential draft only. Human review and manual dispatch required. No automated message has been sent.",
+                        "suggestedDraftText", "Dear " + custName + ", this is a gentle payment reminder from ThreadPilot regarding your pending balance of ₹" + bal + ". Please let us know when we can expect settlement or reply with your payment reference. Thank you!"
+                );
+                yield new ToolResult(toolCall.getName(), true, draftResult, null);
+            }
             default -> new ToolResult(toolCall.getName(), false, null, "Unknown tool: " + toolCall.getName());
         };
     }
@@ -394,6 +439,31 @@ private void saveMessage(AIConversation conversation, String role, String conten
                 new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
                         "getCashFlow",
                         "Get cash flow position (receivables vs payables)",
+                        Map.of("type", "object", "properties", Map.of())
+                )),
+                new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
+                        "getReceivablesAging",
+                        "Get receivables aging buckets (0-30, 31-60, 61-90, 90+) based on invoice due dates",
+                        Map.of("type", "object", "properties", Map.of())
+                )),
+                new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
+                        "getCustomerCreditIntelligence",
+                        "Get customer credit intelligence, delinquency risk, and purchasing cycle segments",
+                        Map.of("type", "object", "properties", Map.of())
+                )),
+                new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
+                        "getDailyActionCenter",
+                        "Get prioritized daily actions with financial impact in INR and source links",
+                        Map.of("type", "object", "properties", Map.of())
+                )),
+                new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
+                        "getTextileProductIntelligence",
+                        "Get textile & hosiery 30-day velocity, days of stock, and demand trends",
+                        Map.of("type", "object", "properties", Map.of())
+                )),
+                new com.threadpilot.ai.AITool("function", new com.threadpilot.ai.Function(
+                        "draftFollowupMessage",
+                        "Draft follow-up reminder messages for overdue customers requiring human approval",
                         Map.of("type", "object", "properties", Map.of())
                 ))
         );

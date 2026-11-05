@@ -42,7 +42,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-@Transactional
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         boolean hasTenantContext = TenantContext.hasTenant();
         UUID organizationId;
@@ -138,7 +138,7 @@ public class AuthService {
         return code;
     }
 
-public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         String organizationCode = request.getOrganizationCode().trim().toUpperCase();
         
         Organization organization = organizationRepository.findByCode(organizationCode)
@@ -207,6 +207,28 @@ public AuthResponse login(LoginRequest request) {
         return AuthResponse.of(newAccessToken, newRefreshToken, jwtService.getJwtProperties().getExpiration() / 1000, user);
     }
 
+    @Transactional
+    public void changePassword(String currentPassword, String newPassword) {
+        UUID userId = TenantContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException("UNAUTHORIZED", "User not authenticated");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessException("INVALID_PASSWORD", "Current password does not match");
+        }
+
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new BusinessException("WEAK_PASSWORD", "New password must be at least 8 characters long");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password successfully changed for user: {}", user.getEmail());
+    }
+
     private Role createSystemRole(Organization organization, SystemRole systemRole) {
         Role role = Role.builder()
                 .name(systemRole.name())
@@ -218,4 +240,3 @@ public AuthResponse login(LoginRequest request) {
         return roleRepository.save(role);
     }
 }
-

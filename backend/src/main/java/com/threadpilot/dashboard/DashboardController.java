@@ -1,5 +1,7 @@
 package com.threadpilot.dashboard;
 
+import com.threadpilot.alert.Alert;
+import com.threadpilot.alert.AlertRepository;
 import com.threadpilot.analytics.AnalyticsService;
 import com.threadpilot.common.dto.ApiResponse;
 import com.threadpilot.inventory.InventoryRepository;
@@ -9,6 +11,7 @@ import com.threadpilot.payment.PaymentRepository;
 import com.threadpilot.sale.SaleRepository;
 import com.threadpilot.security.TenantContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +32,7 @@ public class DashboardController {
     private final SaleRepository saleRepository;
     private final CustomerOrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final AlertRepository alertRepository;
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<DashboardStats>> getStats() {
@@ -36,13 +40,10 @@ public class DashboardController {
         AnalyticsService.DashboardMetrics metrics = analyticsService.getDashboardMetrics();
 
         DashboardStats stats = DashboardStats.builder()
-                // Use all-time revenue for totalRevenue
                 .totalRevenue(metrics.getAllTimeSalesCount() != null && metrics.getAllTimeSalesCount() > 0
                         ? saleRepository.getTotalRevenueAllTime(orgId).doubleValue()
                         : 0.0)
-                // Use all-time sales count
                 .totalSales(metrics.getAllTimeSalesCount() != null ? metrics.getAllTimeSalesCount().intValue() : 0)
-                // Use total receivables as double to preserve precision
                 .outstandingPayments(metrics.getTotalReceivables() != null ? metrics.getTotalReceivables().doubleValue() : 0.0)
                 .inventoryValue(metrics.getInventoryValue() != null ? metrics.getInventoryValue().doubleValue() : 0.0)
                 .lowStockItems(metrics.getLowStockCount() != null ? metrics.getLowStockCount().intValue() : 0)
@@ -114,17 +115,16 @@ public class DashboardController {
     @GetMapping("/pending-payments")
     public ResponseEntity<ApiResponse<List<PendingPayment>>> getPendingPayments() {
         UUID orgId = TenantContext.requireTenantId();
-        LocalDate today = LocalDate.now();
 
-        List<PendingPayment> pending = paymentRepository.findCustomerPaymentsByOrganizationIdAndDateRange(orgId, today.minusDays(30), today)
+        List<PendingPayment> pending = orderRepository.findWithOutstanding(orgId)
                 .stream()
-                .map(p -> PendingPayment.builder()
-                        .id(p.getId().toString())
-                        .paymentNumber(p.getPaymentNumber())
-                        .paymentDate(p.getPaymentDate().toString())
-                        .amount(p.getAmount().doubleValue())
-                        .customerName(p.getCustomer() != null ? p.getCustomer().getName() : null)
-                        .supplierName(p.getSupplier() != null ? p.getSupplier().getName() : null)
+                .map(o -> PendingPayment.builder()
+                        .id(o.getId().toString())
+                        .paymentNumber(o.getOrderNumber())
+                        .paymentDate(o.getOrderDate().toString())
+                        .amount(o.getOutstandingAmount().doubleValue())
+                        .customerName(o.getCustomer() != null ? o.getCustomer().getName() : null)
+                        .supplierName(null)
                         .build())
                 .limit(10)
                 .collect(Collectors.toList());
@@ -135,8 +135,19 @@ public class DashboardController {
     @GetMapping("/alerts")
     public ResponseEntity<ApiResponse<List<BusinessAlert>>> getAlerts() {
         UUID orgId = TenantContext.requireTenantId();
-        // Placeholder - would integrate with AlertRepository
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
+        List<BusinessAlert> alerts = alertRepository.findUnreadByOrganizationId(orgId, PageRequest.of(0, 10))
+                .stream()
+                .map(a -> BusinessAlert.builder()
+                        .id(a.getId().toString())
+                        .alertType(a.getAlertType().name())
+                        .severity(a.getSeverity().name())
+                        .title(a.getTitle())
+                        .message(a.getMessage())
+                        .createdAt(a.getCreatedAt().toString())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(alerts));
     }
 
     @lombok.Builder

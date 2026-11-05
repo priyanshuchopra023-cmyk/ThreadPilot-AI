@@ -30,7 +30,29 @@ public class ExpenseService {
     @Transactional(readOnly = true)
     public PageResponse<Expense> getAll(PaginationRequest request) {
         UUID orgId = TenantContext.requireTenantId();
-        Page<Expense> page = expenseRepository.findByOrganizationId(orgId, request.toPageable());
+
+        ExpenseCategory category = null;
+        if (request.getCategory() != null && !request.getCategory().isBlank()) {
+            try {
+                category = ExpenseCategory.valueOf(request.getCategory().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        LocalDate startDate = null;
+        if (request.getStartDate() != null && !request.getStartDate().isBlank()) {
+            try {
+                startDate = LocalDate.parse(request.getStartDate().trim().split("T")[0]);
+            } catch (Exception ignored) {}
+        }
+
+        LocalDate endDate = null;
+        if (request.getEndDate() != null && !request.getEndDate().isBlank()) {
+            try {
+                endDate = LocalDate.parse(request.getEndDate().trim().split("T")[0]);
+            } catch (Exception ignored) {}
+        }
+
+        Page<Expense> page = expenseRepository.findWithFilters(orgId, category, startDate, endDate, request.toPageable());
         return PageResponse.of(page);
     }
 
@@ -73,10 +95,23 @@ public class ExpenseService {
         return expenseRepository.getExpensesByCategory(orgId, start, end);
     }
 
+    @Transactional(readOnly = true)
+    public List<com.threadpilot.analytics.dto.ExpenseSummary> getExpensesSummary(LocalDate start, LocalDate end) {
+        UUID orgId = TenantContext.requireTenantId();
+        if (start != null && end != null) {
+            return expenseRepository.getExpensesByCategory(orgId, start, end);
+        }
+        return expenseRepository.getExpensesByCategoryAllTime(orgId);
+    }
+
     @Transactional
     public Expense create(Expense expense) {
         UUID orgId = TenantContext.requireTenantId();
         UUID userId = TenantContext.getUserId();
+
+        if (expense.getExpenseNumber() == null || expense.getExpenseNumber().trim().isEmpty()) {
+            expense.setExpenseNumber("EXP-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase());
+        }
 
         Organization organization = new Organization();
         organization.setId(orgId);
@@ -142,4 +177,3 @@ public class ExpenseService {
         log.info("Deleted expense: {}", expense.getExpenseNumber());
     }
 }
-

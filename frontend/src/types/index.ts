@@ -262,6 +262,7 @@ export interface SupplierInvoice {
   ocrConfidence?: number;
   ocrRawData?: string;
   supplierId: string;
+  supplierName?: string;
   organizationId: string;
   verifiedById?: string;
   verifiedAt?: string;
@@ -463,4 +464,85 @@ export interface OcrResult {
   structuredData: Record<string, unknown>;
   lineItems: OcrLineItem[];
   error?: string;
+}
+
+export interface CustomerAgingSummary {
+  customerId: string;
+  customerName: string;
+  outstanding: number;
+  creditLimit: number;
+  daysOverdue: number;
+  earliestDueDate?: string;
+}
+
+export interface ReceivablesAging {
+  current0To30: number;
+  overdue31To60: number;
+  overdue61To90: number;
+  overdue90Plus: number;
+  totalReceivables: number;
+  customerSummaries: CustomerAgingSummary[];
+}
+
+export interface CustomerIntelligence {
+  customerId: string;
+  customerName: string;
+  businessName?: string;
+  totalSales: number;
+  outstandingBalance: number;
+  creditLimit: number;
+  orderCount: number;
+  avgOrderIntervalDays?: number;
+  daysSinceLastOrder?: number;
+  hasAdequateHistory?: boolean;
+  cycleInterrupted?: boolean;
+  segment: 'CREDIT_LIMIT_BREACHED' | 'HIGH_SALES_POOR_COLLECTION' | 'REACTIVATION_OPPORTUNITY' | 'NEW_ACCOUNT' | 'CHAMPION' | 'REGULAR';
+  recommendation: string;
+}
+
+export interface ActionItem {
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  category: string;
+  title: string;
+  reason: string;
+  entityType: string;
+  entityId: string;
+  actionUrl: string;
+  financialImpact?: number;
+  suggestedDraftMessage?: string;
+}
+
+export interface TextileProductIntelligence {
+  productId: string;
+  sku: string;
+  productName: string;
+  category?: string;
+  currentStock: number;
+  unitsSold30Days: number;
+  dailyVelocity: number;
+  daysOfStock?: number;
+  demandTrend: 'OUT_OF_STOCK_DEMAND_LOST' | 'FAST_MOVING_CRITICAL_STOCK' | 'FAST_MOVING_REPLENISH_SOON' | 'SLOW_MOVING_DEADSTOCK' | 'NEW_PRODUCT_COLLECTING_DATA' | 'STEADY_PERFORMER';
+  dataQualityStatus: 'RELIABLE' | 'PRELIMINARY_DATA';
+  recommendation: string;
+  reorderQuantity: number;
+}
+
+export interface SearchResultItem {
+  type: 'PRODUCT' | 'VARIANT' | 'CUSTOMER' | 'SUPPLIER' | 'ORDER' | 'INVOICE' | 'SALE' | 'PAYMENT';
+  id: string;
+  title: string;
+  subtitle: string;
+  url: string;
+}
+
+export interface SearchResults {
+  products: SearchResultItem[];
+  variants: SearchResultItem[];
+  customers: SearchResultItem[];
+  suppliers: SearchResultItem[];
+  orders: SearchResultItem[];
+  invoices: SearchResultItem[];
+  sales: SearchResultItem[];
+  payments: SearchResultItem[];
+  total: number;
 }

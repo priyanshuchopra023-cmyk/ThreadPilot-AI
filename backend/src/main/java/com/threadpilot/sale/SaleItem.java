@@ -83,37 +83,38 @@ public class SaleItem extends BaseEntity {
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
-    public void calculateAmounts() {
-        BigDecimal baseAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        BigDecimal discount = baseAmount.multiply(discountRate.divide(BigDecimal.valueOf(100)));
-        BigDecimal afterDiscount = baseAmount.subtract(discount);
-        BigDecimal tax = afterDiscount.multiply(taxRate.divide(BigDecimal.valueOf(100)));
-        this.lineTotal = afterDiscount.add(tax);
-        this.costAmount = unitCost.multiply(BigDecimal.valueOf(quantity));
-    }
-
-    public BigDecimal getTaxAmount() {
-        BigDecimal baseAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        BigDecimal discount = baseAmount.multiply(discountRate.divide(BigDecimal.valueOf(100)));
-        BigDecimal afterDiscount = baseAmount.subtract(discount);
-        return afterDiscount.multiply(taxRate.divide(BigDecimal.valueOf(100)));
+    public BigDecimal getBaseAmount() {
+        if (unitPrice == null || quantity == null) return BigDecimal.ZERO;
+        return unitPrice.multiply(BigDecimal.valueOf(quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     public BigDecimal getDiscountAmount() {
-        BigDecimal baseAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        return baseAmount.multiply(discountRate.divide(BigDecimal.valueOf(100)));
+        if (discountRate == null || discountRate.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        return getBaseAmount().multiply(discountRate).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getTaxAmount() {
+        if (taxRate == null || taxRate.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        BigDecimal taxable = getBaseAmount().subtract(getDiscountAmount());
+        return taxable.multiply(taxRate).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public void calculateAmounts() {
+        this.lineTotal = getBaseAmount().subtract(getDiscountAmount()).add(getTaxAmount()).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal cost = unitCost != null ? unitCost : BigDecimal.ZERO;
+        this.costAmount = cost.multiply(BigDecimal.valueOf(quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     public BigDecimal getGrossProfit() {
-        return lineTotal.subtract(costAmount);
+        return (lineTotal != null ? lineTotal : BigDecimal.ZERO).subtract(costAmount != null ? costAmount : BigDecimal.ZERO);
     }
 
     public BigDecimal getGrossMarginPercent() {
-        if (lineTotal.compareTo(BigDecimal.ZERO) == 0) {
+        if (lineTotal == null || lineTotal.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
         return getGrossProfit().divide(lineTotal, 4, java.math.RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
+                .multiply(BigDecimal.valueOf(100)).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }
 

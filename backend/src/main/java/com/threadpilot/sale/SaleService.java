@@ -198,6 +198,13 @@ public class SaleService {
         sale.calculateTotals();
         sale = saleRepository.save(sale);
 
+        // If direct sale without existing order, update customer outstanding balance
+        if (sale.getOrder() == null && sale.getCustomer() != null) {
+            Customer customer = sale.getCustomer();
+            customer.setOutstandingAmount(customer.getOutstandingAmount().add(sale.getTotalAmount()));
+            customerRepository.save(customer);
+        }
+
         createBusinessEvent(sale, EventType.SALE_CREATED, "Sale created: " + sale.getSaleNumber());
 
         log.info("Created sale: {}", sale.getSaleNumber());

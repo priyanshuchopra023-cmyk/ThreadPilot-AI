@@ -16,7 +16,9 @@ import {
   Boxes,
   Compass,
   Layers,
-  ArrowRight
+  ArrowRight,
+  ShieldAlert,
+  CheckCircle2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/Button';
@@ -35,6 +37,64 @@ interface Message {
   timestamp: Date;
   toolsUsed?: string[];
 }
+
+const RenderAssistantContent: React.FC<{ content: string }> = ({ content }) => {
+  const draftMatch = content.match(/```(?:text)?\s*([\s\S]*?)```/);
+  const draftText = draftMatch ? draftMatch[1].trim() : null;
+  const hasSafetyNotice = content.includes('> [!IMPORTANT]');
+
+  let displayText = content;
+  if (draftMatch) {
+    displayText = displayText.replace(/```(?:text)?\s*[\s\S]*?```/, '').trim();
+  }
+  if (hasSafetyNotice) {
+    displayText = displayText.replace(/>\s*\[!IMPORTANT\][\s\S]*?(?=\n\n|$)/, '').trim();
+  }
+
+  return (
+    <div className="space-y-3 font-sans">
+      <div className="whitespace-pre-wrap leading-relaxed text-navy-950 font-sans">
+        {displayText}
+      </div>
+
+      {draftText && (
+        <div className="rounded-xl bg-amber-50/80 border border-amber-200/90 p-3.5 space-y-2 mt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-amber-700" />
+              Suggested Draft Reminder (Pending Human Review)
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(draftText);
+                toast.success('Draft copied to clipboard. Review before dispatch.');
+              }}
+              className="text-[11px] h-6 px-2 text-amber-950 bg-white hover:bg-amber-100 border-amber-300 font-medium"
+              leftIcon={<Copy className="w-3 h-3" />}
+            >
+              Copy Draft
+            </Button>
+          </div>
+          <div className="p-3 rounded-lg bg-white/95 border border-amber-200/80 font-sans text-xs text-navy-900 whitespace-pre-wrap select-all shadow-xs">
+            {draftText}
+          </div>
+        </div>
+      )}
+
+      {hasSafetyNotice && (
+        <div className="p-3 rounded-xl bg-navy-50 border border-navy-200 text-navy-800 text-xs flex items-start gap-2.5 mt-2">
+          <ShieldAlert className="w-4 h-4 text-navy-700 flex-shrink-0 mt-0.5" />
+          <div className="leading-snug">
+            <strong className="block mb-0.5 text-navy-950">Human Authorization Notice</strong>
+            This draft is generated for your review. Thread AI does not execute automatic communications or dispatch messages without your explicit confirmation.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Thread AI — Autonomous Supply Chain & Commercial Intelligence
@@ -236,27 +296,27 @@ export const ThreadAI: React.FC = () => {
   // Structured Domain Prompts for Textile & Hosiery Operations
   const domainPromptGroups = [
     {
-      category: 'Inventory & Spindles',
+      category: 'Textile Velocity & Stock',
       icon: Package,
       prompts: [
+        'Analyze textile inventory velocity and critical stock',
         'What are my low stock yarn counts and blends?',
-        'Which products are slow-moving or overstocked?',
       ],
     },
     {
-      category: 'Commercial Horizon',
+      category: 'Receivables & Collections',
       icon: CircleDollarSign,
       prompts: [
-        'Which customers have overdue or pending invoices?',
-        'Summarize this month’s sales velocity and margin.',
+        'Show verified receivables aging by invoice due dates',
+        'Draft payment reminder for overdue accounts',
       ],
     },
     {
-      category: 'Operational Analysis',
+      category: 'Prioritized Actions & Credit',
       icon: TrendingUp,
       prompts: [
-        'What are my top revenue-generating SKU lines?',
-        'Evaluate our current business health dimensions.',
+        'What are my daily prioritized business actions?',
+        'Which customer accounts have breached credit limits?',
       ],
     },
   ];
@@ -449,7 +509,11 @@ export const ThreadAI: React.FC = () => {
                       ? 'bg-navy-950 text-white rounded-tr-xs shadow-md border border-navy-900' 
                       : 'bg-white text-navy-950 border border-stone-200/90 rounded-tl-xs shadow-card'
                   }`}>
-                    <p className="whitespace-pre-wrap font-sans">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <RenderAssistantContent content={message.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap font-sans">{message.content}</p>
+                    )}
 
                     {/* Live Tools Execution Disclosure */}
                     {message.toolsUsed && message.toolsUsed.length > 0 && (

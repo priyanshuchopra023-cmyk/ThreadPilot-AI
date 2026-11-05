@@ -19,6 +19,7 @@ import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/tables/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { PageHeader } from '../components/ui/PageHeader';
+import { TextileIntelligenceCard } from '../components/intelligence/TextileIntelligenceCard';
 import { inventoryApi } from '../api/endpoints';
 import type { Inventory as InventoryType, PaginatedResponse } from '../types';
 import toast from 'react-hot-toast';
@@ -27,6 +28,7 @@ export const Inventory: React.FC = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [showVelocityIntel, setShowVelocityIntel] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -107,14 +109,24 @@ export const Inventory: React.FC = () => {
           { label: 'Inventory' },
         ]}
         actions={
-          <Button 
-            variant={lowStockOnly ? 'brass' : 'secondary'}
-            size="sm"
-            onClick={() => { setLowStockOnly(!lowStockOnly); setPage(1); }} 
-            leftIcon={<AlertTriangle className="w-3.5 h-3.5" />}
-          >
-            {lowStockOnly ? 'Showing Low Stock' : 'Filter Low Stock'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={showVelocityIntel ? 'brass' : 'secondary'}
+              size="sm"
+              onClick={() => setShowVelocityIntel(!showVelocityIntel)} 
+              leftIcon={<Layers className="w-3.5 h-3.5" />}
+            >
+              {showVelocityIntel ? 'Velocity Intel' : 'Show Velocity'}
+            </Button>
+            <Button 
+              variant={lowStockOnly ? 'danger' : 'secondary'}
+              size="sm"
+              onClick={() => { setLowStockOnly(!lowStockOnly); setPage(1); }} 
+              leftIcon={<AlertTriangle className="w-3.5 h-3.5" />}
+            >
+              {lowStockOnly ? 'Showing Low Stock' : 'Filter Low Stock'}
+            </Button>
+          </div>
         }
       />
 
@@ -152,6 +164,9 @@ export const Inventory: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Textile Velocity & Coverage Intelligence */}
+      {showVelocityIntel && <TextileIntelligenceCard />}
 
       {/* Filter and Search Bar */}
       <Card>

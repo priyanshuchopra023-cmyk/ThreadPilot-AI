@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,10 +21,12 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
     @Query("SELECT o FROM Organization o WHERE o.isActive = true AND LOWER(o.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Organization> searchByName(@Param("name") String name, Pageable pageable);
 
+    @Query("SELECT o FROM Organization o WHERE o.isActive = true")
+    List<Organization> findAllActive();
+
     boolean existsByGstNumberAndIdNot(String gstNumber, UUID id);
 
     boolean existsByCodeAndIdNot(String code, UUID id);
 
     boolean existsByCode(String code);
 }
-

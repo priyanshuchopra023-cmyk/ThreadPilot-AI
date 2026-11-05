@@ -41,6 +41,10 @@ public interface SupplierInvoiceRepository extends JpaRepository<SupplierInvoice
     boolean existsByInvoiceNumberAndOrganizationId(String invoiceNumber, UUID organizationId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM SupplierInvoice i WHERE i.id = :id AND i.organization.id = :orgId")
+    Optional<SupplierInvoice> findByIdAndOrganizationIdWithLock(@Param("id") UUID id, @Param("orgId") UUID orgId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM SupplierInvoice i WHERE i.id = :id")
     Optional<SupplierInvoice> findByIdWithLock(@Param("id") UUID id);
 
@@ -58,4 +62,3 @@ public interface SupplierInvoiceRepository extends JpaRepository<SupplierInvoice
             @Param("supplierId") UUID supplierId,
             Pageable pageable);
 }
-

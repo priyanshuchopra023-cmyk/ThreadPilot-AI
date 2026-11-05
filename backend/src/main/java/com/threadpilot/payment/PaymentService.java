@@ -52,7 +52,7 @@ public class PaymentService {
         return PageResponse.of(page);
     }
 
-@Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public PageResponse<Payment> getByCustomer(UUID customerId, PaginationRequest request) {
         UUID orgId = TenantContext.requireTenantId();
         Page<Payment> page = paymentRepository.findByCustomerId(customerId, orgId, request.toPageable());
@@ -116,12 +116,20 @@ public class PaymentService {
         return paymentRepository.getTotalSupplierPayments(orgId, start, end);
     }
 
-@Transactional
+    @Transactional
     public Payment recordCustomerPayment(Payment payment) {
         final UUID orgId = TenantContext.requireTenantId();
         final UUID userId = TenantContext.getUserId();
 
+        if (payment.getAmount() == null || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("INVALID_AMOUNT", "Payment amount must be greater than zero");
+        }
+
         Customer customer = findCustomerByIdAndOrg(payment.getCustomer().getId(), orgId);
+
+        if (payment.getPaymentNumber() == null || payment.getPaymentNumber().trim().isEmpty()) {
+            payment.setPaymentNumber("PAY-CUST-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase());
+        }
 
         Organization organization = new Organization();
         organization.setId(orgId);
@@ -130,19 +138,28 @@ public class PaymentService {
         payment.setOrganization(organization);
         payment.setPaymentType(PaymentType.CUSTOMER_PAYMENT);
         payment.setRecordedBy(userId != null ? userRepository.findById(userId).orElse(null) : null);
-        payment = paymentRepository.save(payment);
 
-        // Update customer outstanding
-        customer.setOutstandingAmount(customer.getOutstandingAmount().subtract(payment.getAmount()));
-        customerRepository.save(customer);
-
-        // Update order outstanding if linked
-        if (payment.getCustomerOrder() != null) {
+        // Validate order and check overpayment if linked
+        if (payment.getCustomerOrder() != null && payment.getCustomerOrder().getId() != null) {
             CustomerOrder order = findCustomerOrderByIdAndOrg(payment.getCustomerOrder().getId(), orgId);
+            if (payment.getAmount().compareTo(order.getOutstandingAmount()) > 0) {
+                throw new BusinessException("OVERPAYMENT_NOT_ALLOWED",
+                        "Payment amount (" + payment.getAmount() + ") cannot exceed order outstanding balance (" + order.getOutstandingAmount() + ")");
+            }
             order.setPaidAmount(order.getPaidAmount().add(payment.getAmount()));
             order.updateOutstanding();
             orderRepository.save(order);
         }
+
+        payment = paymentRepository.save(payment);
+
+        // Update customer outstanding safely clamped to >= 0
+        BigDecimal newCustomerBalance = customer.getOutstandingAmount().subtract(payment.getAmount());
+        if (newCustomerBalance.compareTo(BigDecimal.ZERO) < 0) {
+            newCustomerBalance = BigDecimal.ZERO;
+        }
+        customer.setOutstandingAmount(newCustomerBalance);
+        customerRepository.save(customer);
 
         createBusinessEvent(payment, EventType.PAYMENT_RECEIVED, "Customer payment received: " + payment.getAmount());
 
@@ -162,12 +179,20 @@ public class PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder", orderId));
     }
 
-@Transactional
+    @Transactional
     public Payment recordSupplierPayment(Payment payment) {
         final UUID orgId = TenantContext.requireTenantId();
         final UUID userId = TenantContext.getUserId();
 
+        if (payment.getAmount() == null || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("INVALID_AMOUNT", "Payment amount must be greater than zero");
+        }
+
         Supplier supplier = findSupplierByIdAndOrg(payment.getSupplier().getId(), orgId);
+
+        if (payment.getPaymentNumber() == null || payment.getPaymentNumber().trim().isEmpty()) {
+            payment.setPaymentNumber("PAY-SUPP-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase());
+        }
 
         Organization organization = new Organization();
         organization.setId(orgId);
@@ -176,19 +201,28 @@ public class PaymentService {
         payment.setOrganization(organization);
         payment.setPaymentType(PaymentType.SUPPLIER_PAYMENT);
         payment.setRecordedBy(userId != null ? userRepository.findById(userId).orElse(null) : null);
-        payment = paymentRepository.save(payment);
 
-        // Update supplier outstanding
-        supplier.setOutstandingAmount(supplier.getOutstandingAmount().subtract(payment.getAmount()));
-        supplierRepository.save(supplier);
-
-        // Update invoice outstanding if linked
-        if (payment.getSupplierInvoice() != null) {
+        // Validate invoice and check overpayment if linked
+        if (payment.getSupplierInvoice() != null && payment.getSupplierInvoice().getId() != null) {
             SupplierInvoice invoice = findSupplierInvoiceByIdAndOrg(payment.getSupplierInvoice().getId(), orgId);
+            if (payment.getAmount().compareTo(invoice.getOutstandingAmount()) > 0) {
+                throw new BusinessException("OVERPAYMENT_NOT_ALLOWED",
+                        "Payment amount (" + payment.getAmount() + ") cannot exceed invoice outstanding balance (" + invoice.getOutstandingAmount() + ")");
+            }
             invoice.setPaidAmount(invoice.getPaidAmount().add(payment.getAmount()));
             invoice.updateOutstanding();
             invoiceRepository.save(invoice);
         }
+
+        payment = paymentRepository.save(payment);
+
+        // Update supplier outstanding safely clamped to >= 0
+        BigDecimal newSupplierBalance = supplier.getOutstandingAmount().subtract(payment.getAmount());
+        if (newSupplierBalance.compareTo(BigDecimal.ZERO) < 0) {
+            newSupplierBalance = BigDecimal.ZERO;
+        }
+        supplier.setOutstandingAmount(newSupplierBalance);
+        supplierRepository.save(supplier);
 
         createBusinessEvent(payment, EventType.PAYMENT_MADE, "Supplier payment made: " + payment.getAmount());
 
@@ -222,7 +256,7 @@ public class PaymentService {
         return paymentRepository.save(existing);
     }
 
-@Transactional
+    @Transactional
     public void delete(UUID id) {
         final UUID orgId = TenantContext.requireTenantId();
         Payment payment = getById(id);
@@ -239,7 +273,8 @@ public class PaymentService {
             // Reverse order paid amount if linked
             if (payment.getCustomerOrder() != null) {
                 CustomerOrder order = findCustomerOrderByIdAndOrg(payment.getCustomerOrder().getId(), orgId);
-                order.setPaidAmount(order.getPaidAmount().subtract(payment.getAmount()));
+                BigDecimal newPaid = order.getPaidAmount().subtract(payment.getAmount());
+                order.setPaidAmount(newPaid.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newPaid);
                 order.updateOutstanding();
                 orderRepository.save(order);
             }
@@ -254,7 +289,8 @@ public class PaymentService {
             // Reverse invoice paid amount if linked
             if (payment.getSupplierInvoice() != null) {
                 SupplierInvoice invoice = findSupplierInvoiceByIdAndOrg(payment.getSupplierInvoice().getId(), orgId);
-                invoice.setPaidAmount(invoice.getPaidAmount().subtract(payment.getAmount()));
+                BigDecimal newPaid = invoice.getPaidAmount().subtract(payment.getAmount());
+                invoice.setPaidAmount(newPaid.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newPaid);
                 invoice.updateOutstanding();
                 invoiceRepository.save(invoice);
             }
@@ -279,4 +315,3 @@ public class PaymentService {
         businessEventRepository.save(event);
     }
 }
-

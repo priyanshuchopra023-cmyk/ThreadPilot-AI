@@ -1,5 +1,6 @@
 package com.threadpilot.ocr;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OcrResult {
 
     private boolean success;
@@ -24,6 +26,7 @@ public class OcrResult {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class OcrLineItem {
         private String description;
         private Integer quantity;
@@ -33,4 +36,3 @@ public class OcrResult {
         private Double lineTotal;
     }
 }
-

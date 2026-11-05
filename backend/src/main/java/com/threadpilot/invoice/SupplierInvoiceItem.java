@@ -1,5 +1,6 @@
 package com.threadpilot.invoice;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.threadpilot.common.util.BaseEntity;
 import com.threadpilot.organization.Organization;
 import com.threadpilot.product.Product;
@@ -55,6 +56,7 @@ public class SupplierInvoiceItem extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false)
     private SupplierInvoice invoice;
@@ -71,12 +73,24 @@ public class SupplierInvoiceItem extends BaseEntity {
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
+    public BigDecimal getBaseAmount() {
+        if (unitPrice == null || quantity == null) return BigDecimal.ZERO;
+        return unitPrice.multiply(BigDecimal.valueOf(quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getDiscountAmount() {
+        if (discountRate == null || discountRate.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        return getBaseAmount().multiply(discountRate).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getTaxAmount() {
+        if (taxRate == null || taxRate.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        BigDecimal taxable = getBaseAmount().subtract(getDiscountAmount());
+        return taxable.multiply(taxRate).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
     public void calculateLineTotal() {
-        BigDecimal baseAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        BigDecimal discount = baseAmount.multiply(discountRate.divide(BigDecimal.valueOf(100)));
-        BigDecimal afterDiscount = baseAmount.subtract(discount);
-        BigDecimal tax = afterDiscount.multiply(taxRate.divide(BigDecimal.valueOf(100)));
-        this.lineTotal = afterDiscount.add(tax);
+        this.lineTotal = getBaseAmount().subtract(getDiscountAmount()).add(getTaxAmount()).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }
 
